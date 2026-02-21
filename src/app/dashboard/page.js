@@ -50,7 +50,7 @@ export default function Dashboard() {
     const [data, setData] = useState(null);
     const [market, setMarket] = useState(null);
     const [allCompanies, setAllCompanies] = useState([]);
-    const [history, setHistory] = useState([]);
+    const [companyHistory, setCompanyHistory] = useState([]);
     const [tab, setTab] = useState("decisions");
     const [submitMsg, setSubmitMsg] = useState("");
 
@@ -69,10 +69,11 @@ export default function Dashboard() {
     const [upgradeProcessor, setUpgradeProcessor] = useState(false);
 
     const fetchAll = useCallback(async (id) => {
-        const [compRes, mktRes, allRes] = await Promise.all([
+        const [compRes, mktRes, allRes, histRes] = await Promise.all([
             fetch(`/api/companies/${id}`),
             fetch("/api/market"),
             fetch("/api/companies"),
+            fetch(`/api/history/company/${id}`),
         ]);
         if (compRes.ok) {
             const c = await compRes.json();
@@ -83,6 +84,7 @@ export default function Dashboard() {
         }
         if (mktRes.ok) setMarket(await mktRes.json());
         if (allRes.ok) setAllCompanies(await allRes.json());
+        if (histRes.ok) setCompanyHistory(await histRes.json());
     }, []);
 
     useEffect(() => {
@@ -152,9 +154,7 @@ export default function Dashboard() {
         .sort((a, b) => buildScore(b) - buildScore(a))
         .map((c, i) => ({ ...c, rank: i + 1, score: buildScore(c) }));
 
-    const myHistoryChartData = [
-        { q: "Q1", equity: 500000, brand: 10 },
-    ];
+    // companyHistory is fetched live from /api/history/company/[id]
 
     return (
         <div className="min-h-screen text-gray-100 relative">
@@ -194,8 +194,8 @@ export default function Dashboard() {
                         key={t.id}
                         onClick={() => setTab(t.id)}
                         className={`px-5 py-2 rounded-t-lg text-sm font-semibold transition-all border-b-2 ${tab === t.id
-                                ? "bg-cyan-500/10 border-cyan-400 text-cyan-300"
-                                : "border-transparent text-gray-500 hover:text-gray-300 hover:bg-white/5"
+                            ? "bg-cyan-500/10 border-cyan-400 text-cyan-300"
+                            : "border-transparent text-gray-500 hover:text-gray-300 hover:bg-white/5"
                             }`}
                     >
                         {t.label}
@@ -363,21 +363,81 @@ export default function Dashboard() {
 
                         {/* Trend Charts */}
                         <div className="glass-panel p-6 md:col-span-2 flex flex-col gap-6">
-                            <SectionHeader title="📈 Historical Trends" color="text-fuchsia-400" />
-                            <p className="text-gray-500 text-sm font-mono">Charts will populate as quarters are completed. Financial history is persisted via the Time Machine snapshots.</p>
-                            <div className="bg-black/30 rounded-xl border border-fuchsia-500/10 p-4 h-64 flex items-center justify-center">
-                                <span className="text-gray-700 font-mono text-sm">
-                                    Awaiting Q2 data...
-                                </span>
+                            <div className="flex items-center justify-between">
+                                <SectionHeader title="📈 Historical Trends" color="text-fuchsia-400" />
+                                <span className="text-xs text-gray-600 font-mono">{companyHistory.length} quarters recorded</span>
                             </div>
-                            {/* Placeholder component scoring view */}
-                            <div className="grid grid-cols-2 gap-4">
+
+                            {companyHistory.length < 1 ? (
+                                <div className="bg-black/30 rounded-xl border border-fuchsia-500/10 p-4 h-48 flex items-center justify-center">
+                                    <span className="text-gray-600 font-mono text-sm">No snapshot history yet. Advance the first quarter to start recording.</span>
+                                </div>
+                            ) : (
+                                <>
+                                    {/* Equity & Cash chart */}
+                                    <div>
+                                        <p className="text-xs text-gray-500 font-mono uppercase mb-2">Total Equity vs. Cash</p>
+                                        <ResponsiveContainer width="100%" height={200}>
+                                            <LineChart data={companyHistory} margin={{ top: 4, right: 16, left: 0, bottom: 0 }}>
+                                                <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
+                                                <XAxis dataKey="quarter" tick={{ fill: '#6b7280', fontSize: 11 }} />
+                                                <YAxis tickFormatter={v => `$${(v / 1000).toFixed(0)}k`} tick={{ fill: '#6b7280', fontSize: 11 }} width={56} />
+                                                <Tooltip
+                                                    contentStyle={{ background: '#0d1117', border: '1px solid #1f2937', borderRadius: 8, color: '#e5e7eb', fontFamily: 'monospace', fontSize: 12 }}
+                                                    formatter={(v, name) => [`$${Number(v).toLocaleString()}`, name]}
+                                                />
+                                                <Legend wrapperStyle={{ fontSize: 11, color: '#9ca3af' }} />
+                                                <Line type="monotone" dataKey="total_equity" name="Total Equity" stroke="#22d3ee" strokeWidth={2} dot={{ r: 3, fill: '#22d3ee' }} />
+                                                <Line type="monotone" dataKey="cash" name="Cash" stroke="#4ade80" strokeWidth={2} dot={{ r: 3, fill: '#4ade80' }} />
+                                            </LineChart>
+                                        </ResponsiveContainer>
+                                    </div>
+
+                                    {/* Brand Equity & Tech Score chart */}
+                                    <div>
+                                        <p className="text-xs text-gray-500 font-mono uppercase mb-2">Brand Equity & Tech Score</p>
+                                        <ResponsiveContainer width="100%" height={180}>
+                                            <LineChart data={companyHistory} margin={{ top: 4, right: 16, left: 0, bottom: 0 }}>
+                                                <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
+                                                <XAxis dataKey="quarter" tick={{ fill: '#6b7280', fontSize: 11 }} />
+                                                <YAxis tick={{ fill: '#6b7280', fontSize: 11 }} width={36} />
+                                                <Tooltip
+                                                    contentStyle={{ background: '#0d1117', border: '1px solid #1f2937', borderRadius: 8, color: '#e5e7eb', fontFamily: 'monospace', fontSize: 12 }}
+                                                />
+                                                <Legend wrapperStyle={{ fontSize: 11, color: '#9ca3af' }} />
+                                                <Line type="monotone" dataKey="brand_equity" name="Brand Equity" stroke="#e879f9" strokeWidth={2} dot={{ r: 3, fill: '#e879f9' }} />
+                                                <Line type="monotone" dataKey="tech_score" name="Tech Score" stroke="#facc15" strokeWidth={2} dot={{ r: 3, fill: '#facc15' }} />
+                                            </LineChart>
+                                        </ResponsiveContainer>
+                                    </div>
+
+                                    {/* Inventory units chart */}
+                                    <div>
+                                        <p className="text-xs text-gray-500 font-mono uppercase mb-2">Inventory Units (End of Quarter)</p>
+                                        <ResponsiveContainer width="100%" height={160}>
+                                            <LineChart data={companyHistory} margin={{ top: 4, right: 16, left: 0, bottom: 0 }}>
+                                                <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
+                                                <XAxis dataKey="quarter" tick={{ fill: '#6b7280', fontSize: 11 }} />
+                                                <YAxis tick={{ fill: '#6b7280', fontSize: 11 }} width={48} />
+                                                <Tooltip
+                                                    contentStyle={{ background: '#0d1117', border: '1px solid #1f2937', borderRadius: 8, color: '#e5e7eb', fontFamily: 'monospace', fontSize: 12 }}
+                                                />
+                                                <Legend wrapperStyle={{ fontSize: 11, color: '#9ca3af' }} />
+                                                <Line type="monotone" dataKey="inventory_units" name="Inventory (units)" stroke="#fb923c" strokeWidth={2} dot={{ r: 3, fill: '#fb923c' }} />
+                                            </LineChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                </>
+                            )}
+
+                            {/* Current-state quick stats */}
+                            <div className="grid grid-cols-2 gap-4 pt-2 border-t border-white/5">
                                 <div className="bg-black/30 border border-white/10 rounded-xl p-4">
-                                    <p className="text-xs text-gray-500 uppercase mb-2 font-mono">Inventory Balance</p>
+                                    <p className="text-xs text-gray-500 uppercase mb-2 font-mono">Inventory (Current)</p>
                                     <p className="text-2xl font-mono text-white">{data.inventory_units.toLocaleString()} <span className="text-sm text-gray-600">units</span></p>
                                 </div>
                                 <div className="bg-black/30 border border-white/10 rounded-xl p-4">
-                                    <p className="text-xs text-gray-500 uppercase mb-2 font-mono">Credit Used / Loan</p>
+                                    <p className="text-xs text-gray-500 uppercase mb-2 font-mono">Debt (Credit / Loan)</p>
                                     <p className="text-2xl font-mono text-red-400">{fmt(data.credit_line)} <span className="text-sm text-gray-600">/ {fmt(data.bank_loan)}</span></p>
                                 </div>
                             </div>
