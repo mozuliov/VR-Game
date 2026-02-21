@@ -1,0 +1,136 @@
+﻿diff --git a/Game Concept.md b/Game Concept.md
+index 542e265..c5782c0 100644
+--- a/Game Concept.md	
++++ b/Game Concept.md	
+@@ -1,6 +1,8 @@
+ # VR Nexus: Silicon & Senses ΓÇô Game Specification
+ ## 1. Game Concept & Objective
+-**VR Nexus** is a multi-round strategic simulation where players act as CEOs of VR hardware startups. You compete against other human teams and two AI-driven titans: **Apex Optic** (The Premium Leader) and **ValueVirtua** (The Budget King).
++The year is 2032. The Virtual Reality market is no longer a niche hobby for gamersΓÇöit is the new frontier of human interaction, work, and existence itself. But the landscape is fractured. Two colossal monopolies have strangled innovation for a decade: **Apex Optic**, the elite gatekeeper of unaffordable high-end immersion, and **ValueVirtua**, the purveyor of cheap, nausea-inducing casual headsets. The world is hungry for a third optionΓÇöa device that balances performance, price, and soul.
++
++You are the founder of a stealth-mode startup with a prototype that could change everything. Leading a team of brilliant engineers and ruthless strategists, you have secured a seed round to enter the "VR Nexus" arena. Your mission is simple but dangerous: design a headset that disrupts the duopoly, manage your volatile cash flow, and survive long enough to become the new market standard. Defeat the titans, outmaneuver rival startups, or bankrupt your company trying. The simulation begins now.
+ - **Winning Condition**: The company with the highest Weighted Score at the end of the final round wins.
+ - **Weighted Score Formula**: $Score = (0.4 \times \text{Cumulative Profit}) + (0.4 \times \text{Current Market Share}) + (0.2 \times \text{Brand Equity})$.
+ 
+@@ -52,55 +54,78 @@ The simulation tracks a sophisticated accounting ledger for every company.
+ 
+ ### A. Detailed Balance Sheet
+ 
+-**Category** | **Line Items**
+---- | ---
+-**Assets** | **Cash**: Liquid capital for operations.
+-| **Accounts Receivable (AR)**: 30% of sales from the previous quarter (collected this quarter).
+-| **Prepaid Amounts**: Future component deposits or insurance.
+-| **Inventory**: Value of unsold headsets at cost.
+-| **Fixed Assets**: Gross Historical Value minus Accumulated Depreciation.
+-**Liabilities** | **Accounts Payable (AP)**: 50% of component costs (due next quarter).
+-| **Credit Line**: Flexible high-interest revolving debt.
+-| **Bank Loan**: Fixed-term debt with scheduled principal repayments.
+-**Equity** | **Shareholders' Equity**: Initial investment + any capital injections.
+-| **Retained Earnings**: Cumulative net income/loss from all previous quarters.
++| Line | Item | Calculation / Description |
++| :--- | :--- | :--- |
++| **A1** | **Cash** | Liquid capital for operations. |
++| **A2** | **Accounts Receivable (AR)** | 30% of sales from previous quarter. |
++| **A3** | **Prepaid Amounts** | Future component deposits or insurance. |
++| **A4** | **Inventory** | Value of unsold headsets at cost. |
++| **A5** | **Total Current Assets** | Sum(A1:A4) |
++| **A6** | **Fixed Assets (Gross)** | Historical purchase value of all equipment/property. |
++| **A7** | **Accumulated Depreciation** | Total value loss charged to date (Contra-Asset). |
++| **A8** | **Total Long-Term Assets** | A6 - A7 |
++| **A9** | **Total Assets** | A5 + A8 |
++| **A10** | **Accounts Payable (AP)** | 50% of component costs (due next quarter). |
++| **A11** | **Credit Line** | Flexible high-interest revolving debt. |
++| **A12** | **Total Current Liabilities** | A10 + A11 |
++| **A13** | **Bank Loan** | Fixed-term debt with scheduled principal repayments. |
++| **A14** | **Total Long-Term Liabilities** | Value of A13 |
++| **A15** | **Total Liabilities** | A12 + A14 |
++| **A16** | **Shareholders' Equity** | Initial investment + any capital injections. |
++| **A17** | **Retained Earnings** | Cumulative net income/loss from previous quarters. |
++| **A18** | **Total Equity** | A16 + A17 |
+ 
+ ### B. Profit & Loss (P&L) Statement
+ 
+-**Revenue**: (Units Sold ├ù Unit Price)
+-
+-**Cost of Goods Sold (COGS)**: (Units Sold ├ù Unit Build Cost)
+-
+-**Gross Profit**: Revenue - COGS
+-
+-**Operating Expenses (OpEx)**: * Marketing & Brand Spend
+-
+-**R&D Maintenance/Upgrades**
+-
+-**Depreciation Expense**: 12.5% of Fixed Assets (Straight-line).
+-
+-**Operating Income (EBIT)**: Gross Profit - OpEx
+-
+-**Interest Expense**: (Credit Line Balance ├ù Rate) + (Bank Loan Balance ├ù Rate)
+-
+-**Net Income**: EBIT - Interest Expense
++| Line | Item | Calculation |
++| :--- | :--- | :--- |
++| **B1** | **Revenue** | (Units Sold ├ù Unit Price) |
++| **B2** | **Cost of Goods Sold (COGS)** | (Units Sold ├ù Unit Build Cost) |
++| **B3** | **Gross Profit** | B1 - B2 |
++| **B4** | **Operating Expenses (OpEx)** | Marketing Spend + Brand Spend |
++| **B5** | **R&D Maintenance/Upgrades** | One-time fees + Recurring maintenance |
++| **B6** | **Depreciation Expense** | 12.5% of Fixed Assets Gross (A6) |
++| **B7** | **Operating Income (EBIT)** | B3 - (B4 + B5 + B6) |
++| **B8** | **Interest Expense** | (Credit Line Balance ├ù Rate) + (Bank Loan Balance ├ù Rate) |
++| **B9** | **Net Income** | B7 - B8 |
+ 
+ ### C. Cash Flow Statement
+ 
+-**Cash Flow from Operations (CFO)**:
+-*   **Cash Collected from Customers**: (Current Sales ├ù 70%) + (Previous AR)
+-*   **Cash Paid for Inventory/Suppliers**: (Current Build Costs ├ù 50%) + (Previous AP)
+-*   **Cash Paid for OpEx**: (Marketing Spend + R&D Upgrade Fees)
+-*   **Cash Paid for Interest**: (Total Interest Accrued)
+-
+-**Cash Flow from Investing (CFI)**:
+-*   **Capital Expenditures**: (Cash spent purchasing Fixed Assets)
+-
+-**Cash Flow from Financing (CFF)**:
+-*   **Debt Activity**: (New Loans Taken - Principal Repayments)
+-*   **Equity Activity**: (Stock Issued - Dividends Paid)
+-
+-## 7. Game Master "War Room" Briefing
++| Line | Item | Calculation |
++| :--- | :--- | :--- |
++| **C1** | **Cash Collected from Customers** | (Current Sales ├ù 70%) + (Previous AR) |
++| **C2** | **Cash Paid for Inventory** | (Current Build Costs ├ù 50%) + (Previous AP) |
++| **C3** | **Cash Paid for OpEx** | (Marketing + R&D Upgrade Fees) |
++| **C4** | **Cash Paid for Interest** | Total Interest Accrued |
++| **C5** | **Cash Flow from Operations (CFO)** | C1 - (C2 + C3 + C4) |
++| **C6** | **Capital Expenditures (CFI)** | Cash spent purchasing Fixed Assets |
++| **C7** | **Debt Activity** | (New Loans Taken - Principal Repayments) |
++| **C8** | **Equity Activity** | (Stock Issued - Dividends Paid) |
++| **C9** | **Cash Flow from Financing (CFF)** | C7 + C8 |
++| **C10** | **Net Change in Cash** | C5 - C6 + C9 |
++
++## 7. Interface & Technical Specs
++### **The Dashboard for Players**
++The player dashboard is the primary interface for making decisions and managing the company. This dashboard shows one company data.
++The player dashboard can be accessed only by entering a unique ID at the welcome screen.
++* **Decision Hub**: Sliders for Price, Production Volume, Component selection, and Debt management.
++
++* **Historical Trends**: Graphical charts showing Market Share, Net Income, and Equity growth over all played quarters.
++
++* **Competitive Intelligence**: A "Market View" showing competitors' previous quarter prices and tech specs.
++
++* **Lookups**: Players can toggle back to view any previous quarterΓÇÖs full financial suite.
++
++### **The Inerface for Game Master**
++The Game Master interface should be protected and accessible only by entering a secret password at the welcome screen.
++
++**The Game Master interface** consists of following screens:
++* **Leaderboard**: Rankings by Total Equity and Market Share.
++* **Configurations**: Adjust market parameters, company attributes, and external shocks.
++    * Setting up **number of companies** the game running for.
++    * **Rollbacks (GM Only)**: The GM can revert the game to a previous quarter. The engine deletes future entries but retains "Shadow KPIs" so the GM can discuss the "Old Timeline" vs. the "New Timeline."
++
++## 8. Game Master "War Room" Briefing
+ The transition between quarters is marked by a comprehensive market review led by the GM.
+ 
+ 1. The Leaderboard: Rankings by Total Equity and Market Share.
