@@ -173,24 +173,26 @@ The simulation tracks a sophisticated accounting ledger for every company.
 
 ### A. Detailed Balance Sheet
 
-- **A1 — Cash**: Liquid capital for operations.
-- **A2 — Accounts Receivable (AR)**: 30% of sales revenue from the previous quarter (customers on 30-day credit terms). *Q1 opening balance: $0.*
-- **A3 — Prepaid Amounts**: Future component deposits or prepaid insurance premiums.
-- **A4 — Inventory**: Value of unsold headsets carried at Unit Build Cost (FIFO).
-- **A5 — Total Current Assets**: Sum(A1 + A2 + A3 + A4)
-- **A6 — Fixed Assets (Gross)**: Historical purchase price of all equipment and property (never decreases).
-- **A7 — Accumulated Depreciation**: Total depreciation charged against Fixed Assets to date (Contra-Asset — reduces book value).
-- **A8 — Net Fixed Assets (Total Long-Term Assets)**: A6 − A7. This value drives Production Capacity (see Section 2.5).
-- **A9 — Total Assets**: A5 + A8
-- **A10 — Accounts Payable (AP)**: 50% of component costs from the current quarter are deferred and due next quarter. *Q1 opening balance: $0.*
-- **A11 — Credit Line**: Flexible high-interest revolving debt (current balance drawn).
-- **A12 — Total Current Liabilities**: A10 + A11
-- **A13 — Bank Loan**: Fixed-term debt with scheduled principal repayments.
-- **A14 — Total Long-Term Liabilities**: Value of A13
-- **A15 — Total Liabilities**: A12 + A14
-- **A16 — Shareholders' Equity**: Initial seed investment ($500,000) plus any subsequent capital injections.
-- **A17 — Retained Earnings**: Cumulative Net Income (or loss) from all previous quarters.
-- **A18 — Total Equity**: A16 + A17
+| Line | Item | Calculation |
+| :--- | :--- | :--- |
+| **A1** | **Cash** | Liquid capital for operations (Closing Balance) |
+| **A2** | **Accounts Receivable (AR)** | 30% of sales revenue from the previous quarter |
+| **A3** | **Prepaid Amounts** | Future component deposits or prepaid insurance premiums |
+| **A4** | **Inventory** | Value of unsold headsets carried at Unit Build Cost (FIFO) |
+| **A5** | **Total Current Assets** | A1 + A2 + A3 + A4 |
+| **A6** | **Fixed Assets (Gross)** | Historical purchase price of all equipment and property |
+| **A7** | **Accumulated Depreciation** | Total depreciation charged to date (Contra-Asset) |
+| **A8** | **Net Fixed Assets** | A6 − A7 (Drives Production Capacity) |
+| **A9** | **Total Assets** | A5 + A8 |
+| **A10** | **Accounts Payable (AP)** | 50% of component costs from the current quarter |
+| **A11** | **Credit Line** | Flexible high-interest revolving debt balance |
+| **A12** | **Total Current Liabilities** | A10 + A11 |
+| **A13** | **Bank Loan** | Fixed-term debt with scheduled principal repayments |
+| **A14** | **Total Long-Term Liabilities** | Value of A13 |
+| **A15** | **Total Liabilities** | A12 + A14 |
+| **A16** | **Shareholders' Equity** | Initial seed investment ($500,000) + subsequent capital |
+| **A17** | **Retained Earnings** | Cumulative Net Income from all previous quarters |
+| **A18** | **Total Equity** | A16 + A17 |
 
 > **Balance Sheet Check**: Total Assets (A9) must always equal Total Liabilities + Total Equity (A15 + A18). Any discrepancy indicates a calculation error.
 
