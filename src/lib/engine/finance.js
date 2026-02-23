@@ -46,10 +46,10 @@ export const computeLedger = (company, prevLedger, d) => {
     const B5 = (d.rdUpgradeFees || 0) + rdMaintenance; // R&D
 
     // Depreciation: 12.5% of Gross, accumulated capped at 80%
-    const grossAssets = company.fixed_assets_gross + (d.capEx || 0); // CapEx in same period for gross
-    const maxAccum = company.fixed_assets_gross * 0.80; // cap based on original gross
-    const remaining = Math.max(0, maxAccum - company.accumulated_depreciation);
-    const potential = company.fixed_assets_gross * 0.125;
+    const grossAssets = Number(company.fixed_assets_gross || 0) + Number(d.capEx || 0); // New gross
+    const maxAccum = grossAssets * 0.80; // cap based on new gross
+    const remaining = Math.max(0, maxAccum - Number(company.accumulated_depreciation || 0));
+    const potential = Number(company.fixed_assets_gross || 0) * 0.125; // Depreciate old base
     const B6 = Math.min(potential, remaining); // Depreciation
 
     const B7 = B3 - (B4 + B5 + B6); // EBIT
@@ -84,8 +84,8 @@ export const computeLedger = (company, prevLedger, d) => {
     const A4 = newInventoryUnits * unitBuildCost;
     const A5 = A1 + A2 + A3 + A4;
 
-    const A6 = (company.fixed_assets_gross || 0) + C6; // New gross (CapEx applied next qtr per lag rule but we still track it)
-    const A7 = (company.accumulated_depreciation || 0) + B6;
+    const A6 = Number(company.fixed_assets_gross || 0) + Number(d.capEx || 0);
+    const A7 = Number(company.accumulated_depreciation || 0) + B6;
     const A8 = A6 - A7;
     const A9 = A5 + A8;
 

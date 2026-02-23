@@ -58,7 +58,7 @@ export async function POST(request) {
         const sortedCompanies = allocateSales(companies, marketState.market_size);
 
         // --- STEP 4: Compute Financials for each company ---
-        for (const company of sortedCompanies) {
+        for (const company of companies) {
             let prevLedger = marketState.current_quarter > 1 ? {
                 accounts_receivable: company.accounts_receivable,
                 accounts_payable: company.accounts_payable,
@@ -91,7 +91,7 @@ export async function POST(request) {
         }
 
         // --- STEP 5: Persist updated company state ---
-        for (const company of sortedCompanies) {
+        for (const company of companies) {
             const l = company.new_ledger;
             const newFrozen = l.isLiquidityFreeze ? 1 : 0;
 
