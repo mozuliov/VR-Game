@@ -69,7 +69,8 @@ export const initDb = async () => {
         prev_credit_draw REAL DEFAULT 0,
         prev_credit_repay REAL DEFAULT 0,
         prev_loan_draw REAL DEFAULT 0,
-        prev_loan_repay REAL DEFAULT 0
+        prev_loan_repay REAL DEFAULT 0,
+        last_q_ledger TEXT
     );`;
 
     const createMarketStateTable = `

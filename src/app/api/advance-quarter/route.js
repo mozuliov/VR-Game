@@ -101,6 +101,7 @@ export async function POST(request) {
           fixed_assets_gross = ?, accumulated_depreciation = ?,
           accounts_payable = ?, credit_line = ?, bank_loan = ?,
           retained_earnings = ?, brand_equity = ?, is_frozen = ?,
+          last_q_ledger = ?,
           -- Reset single-quarter decisions
           prev_capex = 0, prev_rd_upgrade_fees = 0,
           prev_credit_draw = 0, prev_credit_repay = 0,
@@ -111,6 +112,7 @@ export async function POST(request) {
                 l.BS.A6, l.BS.A7,
                 l.BS.A10, l.BS.A11, l.BS.A13,
                 l.BS.A17, company.new_brand_equity, newFrozen,
+                JSON.stringify({ P_L: l.P_L, CFO: l.CFO, unitBuildCost: l.unitBuildCost }),
                 company.company_id
             ]);
         }

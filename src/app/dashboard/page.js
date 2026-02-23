@@ -361,8 +361,69 @@ export default function Dashboard() {
                             </div>
                         </div>
 
+                        {/* P&L and Cash Flow */}
+                        <div className="glass-panel p-6 md:col-span-2 flex flex-col gap-8">
+                            {!data.last_q_ledger ? (
+                                <div className="flex flex-col items-center justify-center h-full text-gray-600 font-mono text-sm border-2 border-dashed border-white/5 rounded-xl p-8">
+                                    <p>No P&L or Cash Flow data yet.</p>
+                                    <p className="mt-2">Advance the first quarter to see your performance metrics.</p>
+                                </div>
+                            ) : (() => {
+                                const ledger = JSON.parse(data.last_q_ledger);
+                                const { P_L, CFO } = ledger;
+                                return (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                        {/* P&L Column */}
+                                        <div>
+                                            <SectionHeader title="Profit & Loss" color="text-yellow-400" />
+                                            <div className="flex flex-col gap-0.5">
+                                                <BSRow label="B1 · Revenue" value={fmt(P_L.B1)} color="text-white" />
+                                                <BSRow label="B2 · COGS" value={`(${fmt(P_L.B2)})`} color="text-red-400" />
+                                                <BSRow bold label="B3 · Gross Profit" value={fmt(P_L.B3)} />
+
+                                                <p className="text-xs text-gray-600 font-mono uppercase mt-4 mb-2">Operating Expenses</p>
+                                                <BSRow indent label="B4 · Marketing & Brand" value={fmt(P_L.B4)} />
+                                                <BSRow indent label="B5 · R&D (Fees + Maint)" value={fmt(P_L.B5)} />
+                                                <BSRow indent label="B6 · Depreciation" value={fmt(P_L.B6)} />
+                                                <BSRow bold label="B7 · Operating Income (EBIT)" value={fmt(P_L.B7)} />
+
+                                                <p className="text-xs text-gray-600 font-mono uppercase mt-4 mb-2">Financing & Taxes</p>
+                                                <BSRow indent label="B8 · Interest Expense" value={fmt(P_L.B8)} color="text-red-400" />
+                                                <BSRow bold label="B9 · Net Income" value={fmt(P_L.B9)} color={P_L.B9 >= 0 ? "text-green-400" : "text-red-400"} />
+                                            </div>
+                                        </div>
+
+                                        {/* Cash Flow Column */}
+                                        <div>
+                                            <SectionHeader title="Cash Flow" color="text-green-400" />
+                                            <div className="flex flex-col gap-0.5">
+                                                <p className="text-xs text-gray-600 font-mono uppercase mb-2">Operating Activities</p>
+                                                <BSRow indent label="C1 · Cash from Customers" value={fmt(CFO.C1)} />
+                                                <BSRow indent label="C2 · Cash Paid for Inventory" value={`(${fmt(CFO.C2)})`} />
+                                                <BSRow indent label="C3 · Cash Paid for OpEx/R&D" value={`(${fmt(CFO.C3)})`} />
+                                                <BSRow indent label="C4 · Cash Paid for Interest" value={`(${fmt(CFO.C4)})`} />
+                                                <BSRow bold label="C5 · Net Cash from Ops (CFO)" value={fmt(CFO.C5)} color={CFO.C5 >= 0 ? "text-green-400" : "text-red-400"} />
+
+                                                <p className="text-xs text-gray-600 font-mono uppercase mt-4 mb-2">Investing Activities</p>
+                                                <BSRow indent label="C6 · Capital Expenditures" value={`(${fmt(CFO.C6)})`} />
+                                                <BSRow bold label="Net Cash from Investing" value={`(${fmt(CFO.C6)})`} />
+
+                                                <p className="text-xs text-gray-600 font-mono uppercase mt-4 mb-2">Financing Activities</p>
+                                                <BSRow indent label="C7 · Debt Activity (Net)" value={fmt(CFO.C7)} color={CFO.C7 >= 0 ? "text-green-400" : "text-red-400"} />
+                                                <BSRow bold label="Net Cash from Financing" value={fmt(CFO.C9)} />
+
+                                                <div className="mt-4 pt-2 border-t-2 border-white/10">
+                                                    <BSRow bold label="C10 · Net Change in Cash" value={fmt(CFO.C10)} color={CFO.C10 >= 0 ? "text-green-400" : "text-red-400"} />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })()}
+                        </div>
+
                         {/* Trend Charts */}
-                        <div className="glass-panel p-6 md:col-span-2 flex flex-col gap-6">
+                        <div className="glass-panel p-6 md:col-span-3 flex flex-col gap-6">
                             <div className="flex items-center justify-between">
                                 <SectionHeader title="📈 Historical Trends" color="text-fuchsia-400" />
                                 <span className="text-xs text-gray-600 font-mono">{companyHistory.length} quarters recorded</span>
