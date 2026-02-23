@@ -26,6 +26,9 @@ export default function GameMaster() {
     const [tab, setTab] = useState("leaderboard");
     const [msg, setMsg] = useState("");
     const [growthRate, setGrowthRate] = useState(7);
+    const [humanPlayers, setHumanPlayers] = useState([
+        { id: "AERO_DYNAMICS", name: "Aero Dynamics" }
+    ]);
 
     const fetchAll = useCallback(async () => {
         const [compRes, mktRes, histRes] = await Promise.all([
@@ -49,10 +52,30 @@ export default function GameMaster() {
     }, [router, fetchAll]);
 
     const handleInit = async () => {
-        if (!confirm("Reset the entire simulation? All data will be lost.")) return;
-        const res = await fetch("/api/init", { method: "POST" });
+        if (!confirm(`Reset the entire simulation with ${humanPlayers.length} human players? All current data will be lost.`)) return;
+        const res = await fetch("/api/init", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ companies: humanPlayers })
+        });
         if (res.ok) { setMsg("✓ Simulation reset. All companies initialized."); fetchAll(); }
         else setMsg("✗ Init failed.");
+    };
+
+    const addPlayer = () => {
+        const id = `PLAYER_${humanPlayers.length + 1}`;
+        setHumanPlayers([...humanPlayers, { id, name: `Company ${humanPlayers.length + 1}` }]);
+    };
+
+    const removePlayer = (idx) => {
+        if (humanPlayers.length <= 1) return;
+        setHumanPlayers(humanPlayers.filter((_, i) => i !== idx));
+    };
+
+    const updatePlayer = (idx, field, val) => {
+        const newPlayers = [...humanPlayers];
+        newPlayers[idx][field] = val;
+        setHumanPlayers(newPlayers);
     };
 
     const handleAdvance = async () => {
@@ -142,8 +165,8 @@ export default function GameMaster() {
                         key={t.id}
                         onClick={() => setTab(t.id)}
                         className={`px-5 py-2 rounded-t-lg text-sm font-semibold transition-all border-b-2 ${tab === t.id
-                                ? "bg-fuchsia-500/10 border-fuchsia-400 text-fuchsia-300"
-                                : "border-transparent text-gray-500 hover:text-gray-300 hover:bg-white/5"
+                            ? "bg-fuchsia-500/10 border-fuchsia-400 text-fuchsia-300"
+                            : "border-transparent text-gray-500 hover:text-gray-300 hover:bg-white/5"
                             }`}
                     >
                         {t.label}
@@ -296,18 +319,77 @@ export default function GameMaster() {
                 {/* ─── CONFIG TAB ─── */}
                 {tab === "config" && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        {/* Player Configuration */}
+                        <div className="glass-panel p-6 border-l-4 border-l-cyan-500">
+                            <h2 className="text-2xl font-bold mb-6 text-white border-b border-white/10 pb-2">Player Setup</h2>
+                            <div className="flex flex-col gap-4">
+                                <p className="text-xs text-gray-500 font-mono">
+                                    Define the human-driven companies for this simulation.
+                                    These must be configured BEFORE resetting the simulation.
+                                </p>
+
+                                {humanPlayers.map((p, i) => (
+                                    <div key={i} className="flex gap-2 items-center bg-black/40 p-3 rounded border border-white/10">
+                                        <div className="flex-1 flex flex-col gap-2">
+                                            <input
+                                                type="text"
+                                                placeholder="Company ID (e.g. AERO)"
+                                                value={p.id}
+                                                onChange={e => updatePlayer(i, 'id', e.target.value.toUpperCase().replace(/\s/g, '_'))}
+                                                className="bg-black/50 border border-white/10 rounded px-2 py-1 text-xs font-mono text-cyan-400 focus:border-cyan-400 outline-none"
+                                            />
+                                            <input
+                                                type="text"
+                                                placeholder="Display Name"
+                                                value={p.name}
+                                                onChange={e => updatePlayer(i, 'name', e.target.value)}
+                                                className="bg-black/50 border border-white/10 rounded px-2 py-1 text-xs font-mono text-white focus:border-cyan-400 outline-none"
+                                            />
+                                        </div>
+                                        <button
+                                            onClick={() => removePlayer(i)}
+                                            className="text-red-500 hover:text-red-400 p-2 transition"
+                                            disabled={humanPlayers.length <= 1}
+                                        >
+                                            ✕
+                                        </button>
+                                    </div>
+                                ))}
+
+                                <button
+                                    onClick={addPlayer}
+                                    className="w-full py-2 border border-dashed border-white/20 rounded text-xs text-gray-500 hover:text-white hover:border-white/50 transition font-mono"
+                                >
+                                    + Add Human Company
+                                </button>
+
+                                <div className="mt-4 pt-4 border-t border-white/10 flex flex-col gap-2">
+                                    <button onClick={handleInit}
+                                        className="py-3 rounded bg-red-900/30 hover:bg-red-900/50 border border-red-500 text-red-100 font-mono transition">
+                                        ⚠ [DANGER] Reset & Initialize {humanPlayers.length} Players
+                                    </button>
+                                    <p className="text-[10px] text-center text-gray-600 font-mono">
+                                        This will wipe the database and create starting ledgers for all companies above.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
                         {/* Engine Controls */}
-                        <div className="glass-panel p-6 border-l-4 border-l-red-500">
-                            <h2 className="text-2xl font-bold mb-6 text-white border-b border-white/10 pb-2">Engine Controls</h2>
+                        <div className="glass-panel p-6 border-l-4 border-l-fuchsia-500">
+                            <h2 className="text-2xl font-bold mb-6 text-white border-b border-white/10 pb-2">Simulation Engine</h2>
                             <div className="flex flex-col gap-4">
                                 <button onClick={handleAdvance}
                                     className="py-4 rounded bg-fuchsia-900/40 hover:bg-fuchsia-800/60 border border-fuchsia-400 text-fuchsia-100 font-bold transition-all hover:shadow-[0_0_20px_rgba(255,0,127,0.4)] text-lg">
                                     ⏩ Advance Quarter →
                                 </button>
-                                <button onClick={handleInit}
-                                    className="py-3 rounded bg-red-900/30 hover:bg-red-900/50 border border-red-500 text-red-100 font-mono transition">
-                                    ⚠ [DANGER] Reset Entire Simulation
-                                </button>
+                                <div className="bg-black/40 p-4 rounded border border-fuchsia-500/20">
+                                    <p className="text-xs text-gray-500 font-mono mb-2 uppercase">Engine Status</p>
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                                        <span className="text-sm font-mono text-fuchsia-300">Ready for Q{market?.current_quarter || 1} Decisions</span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
