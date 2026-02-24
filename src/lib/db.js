@@ -3,7 +3,11 @@ import path from 'path';
 
 // Connect to SQLite DB
 const dbPath = path.resolve(process.cwd(), 'game.sqlite');
-const db = new sqlite3.Database(dbPath);
+const db = new sqlite3.Database(dbPath, (err) => {
+    if (!err) {
+        db.run("PRAGMA busy_timeout = 5000");
+    }
+});
 
 // Promisify for async/await usage
 export const runQuery = (query, params = []) => {

@@ -52,14 +52,25 @@ export default function GameMaster() {
     }, [router, fetchAll]);
 
     const handleInit = async () => {
-        if (!confirm(`Reset the entire simulation with ${humanPlayers.length} human players? All current data will be lost.`)) return;
-        const res = await fetch("/api/init", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ companies: humanPlayers })
-        });
-        if (res.ok) { setMsg("✓ Simulation reset. All companies initialized."); fetchAll(); }
-        else setMsg("✗ Init failed.");
+        try {
+            if (!confirm(`Reset the entire simulation with ${humanPlayers.length} human players? All current data will be lost.`)) return;
+            setMsg("Initializing...");
+            const res = await fetch("/api/init", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ companies: humanPlayers })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                setMsg(`✓ ${data.message || "Simulation reset."}`);
+                fetchAll();
+            } else {
+                setMsg(`✗ Init failed: ${data.error || "Unknown error"}`);
+            }
+        } catch (e) {
+            console.error("Init error:", e);
+            setMsg(`✗ Error: ${e.message}`);
+        }
     };
 
     const addPlayer = () => {
