@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { initDb, runQuery } from '@/lib/db';
+import { supabase } from '@/lib/db';
 
 export async function POST(req) {
   try {
@@ -17,46 +17,72 @@ export async function POST(req) {
 
     console.log(`Initializing simulation with ${humanCompanies.length} human companies...`);
 
-    // Drop and recreate tables
-    const tables = ['companies', 'market_state', 'history_snapshots', 'shocks'];
-    for (const table of tables) {
-      await runQuery(`DROP TABLE IF EXISTS ${table}`);
-    }
-
-    await initDb(); // Recreate clean tables
+    // Clear existing data
+    await supabase.from('history_snapshots').delete().neq('id', -1);
+    await supabase.from('shocks').delete().neq('id', -1);
+    await supabase.from('companies').delete().neq('company_id', 'dummy_id_never_matching');
+    await supabase.from('market_state').delete().neq('id', -1);
 
     // 1. Reset market
-    await runQuery('DELETE FROM market_state');
-    await runQuery(`INSERT INTO market_state (id, current_quarter, market_size, growth_rate_percent)
-      VALUES (1, 1, 10000, 7.0)`);
+    await supabase.from('market_state').insert([
+      { id: 1, current_quarter: 1, market_size: 10000, growth_rate_percent: 7.0 }
+    ]);
 
     // 2. Insert human players
-    for (const comp of humanCompanies) {
-      console.log(`Inserting company: ${comp.id}`);
-      await runQuery(`
-        INSERT INTO companies (company_id, name, is_ai, prev_price, prev_production_volume, prev_brand_spend,
-          cash, fixed_assets_gross, shareholders_equity)
-        VALUES (?, ?, 0, 1500, 2000, 5000, 500000, 200000, 700000)
-      `, [comp.id, comp.name]);
+    const humanInserts = humanCompanies.map(comp => ({
+      company_id: comp.id,
+      name: comp.name,
+      is_ai: false,
+      prev_price: 1500,
+      prev_production_volume: 2000,
+      prev_brand_spend: 5000,
+      cash: 500000,
+      fixed_assets_gross: 200000,
+      shareholders_equity: 700000
+    }));
+
+    if (humanInserts.length > 0) {
+      const { error: humanErr } = await supabase.from('companies').insert(humanInserts);
+      if (humanErr) throw humanErr;
     }
 
     // AI 1: Apex Optic
-    await runQuery(`
-      INSERT INTO companies
-        (company_id, name, is_ai, prev_price, prev_production_volume, prev_brand_spend,
-         comp_display_level, comp_optics_level, comp_tracking_level, comp_processor_level,
-         brand_equity, fixed_assets_gross, shareholders_equity, cash)
-      VALUES ('APEX_OPTIC', 'Apex Optic', 1, 1800, 3500, 20000, 3, 3, 3, 3, 150, 1000000, 2000000, 1000000)
-    `);
+    const { error: ai1Err } = await supabase.from('companies').insert([{
+      company_id: 'APEX_OPTIC',
+      name: 'Apex Optic',
+      is_ai: true,
+      prev_price: 1800,
+      prev_production_volume: 3500,
+      prev_brand_spend: 20000,
+      comp_display_level: 3,
+      comp_optics_level: 3,
+      comp_tracking_level: 3,
+      comp_processor_level: 3,
+      brand_equity: 150,
+      fixed_assets_gross: 1000000,
+      shareholders_equity: 2000000,
+      cash: 1000000
+    }]);
+    if (ai1Err) throw ai1Err;
 
     // AI 2: ValueVirtua
-    await runQuery(`
-      INSERT INTO companies
-        (company_id, name, is_ai, prev_price, prev_production_volume, prev_brand_spend,
-         comp_display_level, comp_optics_level, comp_tracking_level, comp_processor_level,
-         brand_equity, fixed_assets_gross, shareholders_equity, cash)
-      VALUES ('VALUE_VIRTUA', 'ValueVirtua', 1, 180, 3000, 2000, 1, 1, 1, 1, 60, 300000, 600000, 300000)
-    `);
+    const { error: ai2Err } = await supabase.from('companies').insert([{
+      company_id: 'VALUE_VIRTUA',
+      name: 'ValueVirtua',
+      is_ai: true,
+      prev_price: 180,
+      prev_production_volume: 3000,
+      prev_brand_spend: 2000,
+      comp_display_level: 1,
+      comp_optics_level: 1,
+      comp_tracking_level: 1,
+      comp_processor_level: 1,
+      brand_equity: 60,
+      fixed_assets_gross: 300000,
+      shareholders_equity: 600000,
+      cash: 300000
+    }]);
+    if (ai2Err) throw ai2Err;
 
     console.log("Initialization complete.");
     return NextResponse.json({ success: true, message: `Simulation initialized with ${humanCompanies.length} human and 2 AI companies.` });

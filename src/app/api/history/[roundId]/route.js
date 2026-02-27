@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getQuery, allQuery, runQuery } from '@/lib/db';
+import { supabase } from '@/lib/db';
 
 // Rollback to a specific round_id
 export async function POST(request, { params }) {
@@ -12,56 +12,71 @@ export async function POST(request, { params }) {
         const roundId = parseInt((await params).roundId);
 
         // Find targeted snapshot
-        const snapshot = await getQuery(
-            `SELECT * FROM history_snapshots WHERE round_id = ? AND timeline_status = 'active' ORDER BY id DESC LIMIT 1`,
-            [roundId]
-        );
+        const { data: snapshot, error: snapErr } = await supabase
+            .from('history_snapshots')
+            .select('*')
+            .eq('round_id', roundId)
+            .eq('timeline_status', 'active')
+            .order('id', { ascending: false })
+            .limit(1)
+            .single();
 
-        if (!snapshot) {
+        if (snapErr || !snapshot) {
             return NextResponse.json({ error: 'Snapshot not found for that round' }, { status: 404 });
         }
 
-        const stateData = JSON.parse(snapshot.state_data);
+        const stateData = typeof snapshot.state_data === 'string' ? JSON.parse(snapshot.state_data) : snapshot.state_data;
 
         // Mark all snapshots AFTER this round as "shadow"
-        await runQuery(
-            `UPDATE history_snapshots SET timeline_status = 'shadow' WHERE round_id > ?`,
-            [roundId]
-        );
+        const { error: updateErr } = await supabase
+            .from('history_snapshots')
+            .update({ timeline_status: 'shadow' })
+            .gt('round_id', roundId);
+
+        if (updateErr) throw updateErr;
 
         // Restore company states from snapshot
         for (const company of stateData.companies) {
-            await runQuery(`
-        UPDATE companies SET
-          cash = ?, accounts_receivable = ?, inventory_units = ?,
-          fixed_assets_gross = ?, accumulated_depreciation = ?,
-          accounts_payable = ?, credit_line = ?, bank_loan = ?,
-          retained_earnings = ?, brand_equity = ?, is_frozen = ?,
-          comp_display_level = ?, comp_optics_level = ?,
-          comp_tracking_level = ?, comp_processor_level = ?,
-          prev_price = ?, prev_production_volume = ?, prev_brand_spend = ?,
-          prev_capex = 0, prev_rd_upgrade_fees = 0,
-          prev_credit_draw = 0, prev_credit_repay = 0,
-          prev_loan_draw = 0, prev_loan_repay = 0
-        WHERE company_id = ?
-      `, [
-                company.cash, company.accounts_receivable, company.inventory_units,
-                company.fixed_assets_gross, company.accumulated_depreciation,
-                company.accounts_payable, company.credit_line, company.bank_loan,
-                company.retained_earnings, company.brand_equity, company.is_frozen || 0,
-                company.comp_display_level, company.comp_optics_level,
-                company.comp_tracking_level, company.comp_processor_level,
-                company.prev_price, company.prev_production_volume, company.prev_brand_spend,
-                company.company_id
-            ]);
+            await supabase.from('companies').update({
+                cash: company.cash,
+                accounts_receivable: company.accounts_receivable,
+                inventory_units: company.inventory_units,
+                fixed_assets_gross: company.fixed_assets_gross,
+                accumulated_depreciation: company.accumulated_depreciation,
+                accounts_payable: company.accounts_payable,
+                credit_line: company.credit_line,
+                bank_loan: company.bank_loan,
+                retained_earnings: company.retained_earnings,
+                brand_equity: company.brand_equity,
+                is_frozen: company.is_frozen || 0,
+                comp_display_level: company.comp_display_level,
+                comp_optics_level: company.comp_optics_level,
+                comp_tracking_level: company.comp_tracking_level,
+                comp_processor_level: company.comp_processor_level,
+                prev_price: company.prev_price,
+                prev_production_volume: company.prev_production_volume,
+                prev_brand_spend: company.prev_brand_spend,
+                prev_capex: 0,
+                prev_rd_upgrade_fees: 0,
+                prev_credit_draw: 0,
+                prev_credit_repay: 0,
+                prev_loan_draw: 0,
+                prev_loan_repay: 0
+            }).eq('company_id', company.company_id);
         }
 
         // Restore market state
         const ms = stateData.market_state;
-        await runQuery(
-            `UPDATE market_state SET current_quarter = ?, market_size = ?, growth_rate_percent = ? WHERE id = 1`,
-            [ms.current_quarter, ms.market_size, ms.growth_rate_percent]
-        );
+        const { error: msErr } = await supabase
+            .from('market_state')
+            .update({
+                current_quarter: ms.current_quarter,
+                market_size: ms.market_size,
+                growth_rate_percent: ms.growth_rate_percent
+            })
+            .eq('id', 1);
+
+        if (msErr) throw msErr;
 
         return NextResponse.json({ success: true, restored_to_quarter: roundId });
     } catch (e) {

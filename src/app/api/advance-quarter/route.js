@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import db, { getQuery, allQuery, runQuery } from '@/lib/db';
+import { supabase } from '@/lib/db';
 import { calculateTechScore, calculateAttractiveness, applyBrandEquityChanges, allocateSales } from '@/lib/engine/market';
 import { computeLedger, calculateMaxProductionCapacity } from '@/lib/engine/finance';
 
@@ -10,16 +10,20 @@ export async function POST(request) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const marketState = await getQuery('SELECT * FROM market_state WHERE id = 1');
-        if (!marketState) return NextResponse.json({ error: 'Game not initialized' }, { status: 400 });
+        const { data: marketState, error: msErr } = await supabase.from('market_state').select('*').eq('id', 1).single();
+        if (msErr || !marketState) return NextResponse.json({ error: 'Game not initialized' }, { status: 400 });
 
-        const companies = await allQuery('SELECT * FROM companies');
+        const { data: companies, error: compErr } = await supabase.from('companies').select('*');
+        if (compErr) throw compErr;
 
         // --- STEP 1: Save a snapshot of the current state ("Time Machine") ---
-        await runQuery(
-            `INSERT INTO history_snapshots (round_id, timestamp, state_data, timeline_status) VALUES (?, ?, ?, 'active')`,
-            [marketState.current_quarter, new Date().toISOString(), JSON.stringify({ companies, market_state: marketState })]
-        );
+        const { error: histErr } = await supabase.from('history_snapshots').insert([{
+            round_id: marketState.current_quarter,
+            timestamp: new Date().toISOString(),
+            state_data: { companies, market_state: marketState },
+            timeline_status: 'active'
+        }]);
+        if (histErr) throw histErr;
 
         // --- STEP 2: Update AI competitor decisions ---
         const anyPlayerTechScore11plus = companies.filter(c => !c.is_ai && calculateTechScore(c) >= 11).length > 0;
@@ -69,7 +73,7 @@ export async function POST(request) {
             const unitsProduced = Math.min(company.prev_production_volume || 0, maxProduction);
 
             // Frozen companies can't spend on marketing/R&D
-            const isFrozen = company.is_frozen === 1;
+            const isFrozen = company.is_frozen === 1 || company.is_frozen === true;
 
             const activeQuarterData = {
                 unitsSold: company.actual_sales || 0,
@@ -95,37 +99,41 @@ export async function POST(request) {
             const l = company.new_ledger;
             const newFrozen = l.isLiquidityFreeze ? 1 : 0;
 
-            await runQuery(`
-        UPDATE companies SET
-          cash = ?, accounts_receivable = ?, inventory_units = ?,
-          fixed_assets_gross = ?, accumulated_depreciation = ?,
-          accounts_payable = ?, credit_line = ?, bank_loan = ?,
-          retained_earnings = ?, brand_equity = ?, is_frozen = ?,
-          last_q_ledger = ?,
-          -- Reset single-quarter decisions
-          prev_capex = 0, prev_rd_upgrade_fees = 0,
-          prev_credit_draw = 0, prev_credit_repay = 0,
-          prev_loan_draw = 0, prev_loan_repay = 0
-        WHERE company_id = ?
-      `, [
-                l.BS.A1, l.BS.A2, l.inventory_units,
-                l.BS.A6, l.BS.A7,
-                l.BS.A10, l.BS.A11, l.BS.A13,
-                l.BS.A17, company.new_brand_equity, newFrozen,
-                JSON.stringify({ P_L: l.P_L, CFO: l.CFO, unitBuildCost: l.unitBuildCost }),
-                company.company_id
-            ]);
+            const { error: updateErr } = await supabase.from('companies').update({
+                cash: l.BS.A1,
+                accounts_receivable: l.BS.A2,
+                inventory_units: l.inventory_units,
+                fixed_assets_gross: l.BS.A6,
+                accumulated_depreciation: l.BS.A7,
+                accounts_payable: l.BS.A10,
+                credit_line: l.BS.A11,
+                bank_loan: l.BS.A13,
+                retained_earnings: l.BS.A17,
+                brand_equity: company.new_brand_equity,
+                is_frozen: newFrozen,
+                last_q_ledger: { P_L: l.P_L, CFO: l.CFO, unitBuildCost: l.unitBuildCost },
+                prev_capex: 0,
+                prev_rd_upgrade_fees: 0,
+                prev_credit_draw: 0,
+                prev_credit_repay: 0,
+                prev_loan_draw: 0,
+                prev_loan_repay: 0
+            }).eq('company_id', company.company_id);
+            if (updateErr) throw updateErr;
         }
 
         // --- STEP 6: Advance Market ---
         const newMarketSize = Math.floor(marketState.market_size * (1 + (marketState.growth_rate_percent / 100)));
-        await runQuery('UPDATE market_state SET current_quarter = ?, market_size = ? WHERE id = 1', [
-            marketState.current_quarter + 1,
-            newMarketSize,
-        ]);
+        const { error: msUpdateErr } = await supabase.from('market_state').update({
+            current_quarter: marketState.current_quarter + 1,
+            market_size: newMarketSize
+        }).eq('id', 1);
+        if (msUpdateErr) throw msUpdateErr;
 
         // --- STEP 7: Return summary data ---
-        const updatedCompanies = await allQuery('SELECT * FROM companies');
+        const { data: updatedCompanies, error: updatedErr } = await supabase.from('companies').select('*');
+        if (updatedErr) throw updatedErr;
+
         return NextResponse.json({
             success: true,
             new_quarter: marketState.current_quarter + 1,

@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
-import { getQuery, runQuery } from '@/lib/db';
+import { supabase } from '@/lib/db';
 
 export async function GET() {
     try {
-        const state = await getQuery('SELECT * FROM market_state WHERE id = 1');
-        return NextResponse.json(state || {});
+        const { data, error } = await supabase.from('market_state').select('*').eq('id', 1).single();
+        if (error) throw error;
+        return NextResponse.json(data || {});
     } catch (e) {
         return NextResponse.json({ error: e.message }, { status: 500 });
     }
@@ -18,7 +19,10 @@ export async function PUT(request) {
         }
         const body = await request.json();
         const { growth_rate_percent } = body;
-        await runQuery('UPDATE market_state SET growth_rate_percent = ? WHERE id = 1', [growth_rate_percent]);
+
+        const { error } = await supabase.from('market_state').update({ growth_rate_percent }).eq('id', 1);
+        if (error) throw error;
+
         return NextResponse.json({ success: true });
     } catch (e) {
         return NextResponse.json({ error: e.message }, { status: 500 });

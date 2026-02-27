@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { allQuery } from '@/lib/db';
+import { supabase } from '@/lib/db';
 
 // Returns per-quarter financial history for a specific company, extracted from snapshots.
 // Each snapshot's state_data contains a "companies" array — we find the matching company.
@@ -7,22 +7,19 @@ export async function GET(request, { params }) {
     try {
         const companyId = (await params).id;
 
-        const snapshots = await allQuery(
-            `SELECT round_id, timestamp, state_data 
-       FROM history_snapshots 
-       WHERE timeline_status = 'active' 
-       ORDER BY round_id ASC`
-        );
+        const { data: snapshots, error } = await supabase
+            .from('history_snapshots')
+            .select('round_id, timestamp, state_data')
+            .eq('timeline_status', 'active')
+            .order('round_id', { ascending: true });
+
+        if (error) throw error;
 
         const history = [];
 
         for (const snap of snapshots) {
-            let stateData;
-            try {
-                stateData = JSON.parse(snap.state_data);
-            } catch {
-                continue;
-            }
+            let stateData = typeof snap.state_data === 'string' ? JSON.parse(snap.state_data) : snap.state_data;
+            if (!stateData) continue;
 
             const company = (stateData.companies || []).find(c => c.company_id === companyId);
             if (!company) continue;
