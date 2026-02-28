@@ -1,4 +1,4 @@
-import { COMPONENT_COSTS, ASSEMBLY_COST, RD_MAINTENANCE_FEE_PER_LEVEL } from './constants';
+import { COMPONENT_COSTS, ASSEMBLY_COST, RD_MAINTENANCE_FEE_PER_LEVEL, FIXED_OVERHEAD } from './constants';
 
 export const calculateUnitBuildCost = (company) => {
     let cost = ASSEMBLY_COST;
@@ -41,9 +41,13 @@ export const computeLedger = (company, prevLedger, d) => {
     const B2 = d.unitsSold * unitBuildCost;
     const B3 = B1 - B2; // Gross Profit
 
-    const B4 = (d.marketingSpend || 0) + (d.brandSpend || 0); // OpEx
+    const B4 = (d.marketingSpend || 0) + (d.brandSpend || 0); // OpEx (marketing + brand)
     const rdMaintenance = calculateRecurringRnDFee(company);
     const B5 = (d.rdUpgradeFees || 0) + rdMaintenance; // R&D
+
+    // Fixed overhead: factory rent, utilities, non-R&D staff, insurance
+    // Applied every quarter regardless of production volume.
+    const B5b = FIXED_OVERHEAD;
 
     // Depreciation: 12.5% of Gross, accumulated capped at 80%
     const grossAssets = Number(company.fixed_assets_gross || 0) + Number(d.capEx || 0); // New gross
@@ -52,7 +56,7 @@ export const computeLedger = (company, prevLedger, d) => {
     const potential = Number(company.fixed_assets_gross || 0) * 0.125; // Depreciate old base
     const B6 = Math.min(potential, remaining); // Depreciation
 
-    const B7 = B3 - (B4 + B5 + B6); // EBIT
+    const B7 = B3 - (B4 + B5 + B5b + B6); // EBIT
 
     // Debt balances after this quarter's activity
     let newCreditLine = Math.max(0, (company.credit_line || 0) + (d.newDebt_CreditLine || 0) - (d.repayment_CreditLine || 0));
@@ -65,7 +69,7 @@ export const computeLedger = (company, prevLedger, d) => {
     const C1 = (B1 * 0.70) + (prevLedger?.accounts_receivable || 0);
     const totalBuildCost = d.unitsProduced * unitBuildCost;
     const C2 = (totalBuildCost * 0.50) + (prevLedger?.accounts_payable || 0);
-    const C3 = B4 + B5;
+    const C3 = B4 + B5 + B5b; // Cash paid for OpEx, R&D, and fixed overhead (all cash expenses)
     const C4 = B8;
     const C5 = C1 - (C2 + C3 + C4); // CFO
 
@@ -105,7 +109,7 @@ export const computeLedger = (company, prevLedger, d) => {
     const isLiquidityFreeze = A1 <= 0 || debtRatio > 0.50;
 
     return {
-        P_L: { B1, B2, B3, B4, B5, B6, B7, B8, B9 },
+        P_L: { B1, B2, B3, B4, B5, B5b, B6, B7, B8, B9 },
         CFO: { C1, C2, C3, C4, C5, C6, C7, C8, C9, C10 },
         BS: {
             A1, A2, A3, A4, A5,

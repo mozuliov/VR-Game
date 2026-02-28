@@ -5,14 +5,9 @@ import { useRouter } from "next/navigation";
 import {
     LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from "recharts";
-import { COMPONENT_COSTS } from "@/lib/engine/constants";
+import { COMPONENT_COSTS, ASSEMBLY_COST } from "@/lib/engine/constants";
 
-const COMP_COSTS = {
-    display: { 1: { name: "LCD", cost: 80 }, 2: { name: "OLED", cost: 150 }, 3: { name: "Micro-OLED", cost: 300 } },
-    optics: { 1: { name: "Fresnel", cost: 20 }, 2: { name: "Aspheric", cost: 60 }, 3: { name: "Pancake", cost: 120 } },
-    tracking: { 1: { name: "3-DoF", cost: 30 }, 2: { name: "6-DoF Inside-out", cost: 100 }, 3: { name: "6-DoF + Eye Tracking", cost: 250 } },
-    processor: { 1: { name: "Mobile Lite", cost: 50 }, 2: { name: "Standard SoC", cost: 120 }, 3: { name: "High-Performance", cost: 280 } },
-};
+// Use imported constants directly (COMPONENT_COSTS) — no local copy needed
 
 function fmt(n) {
     if (n == null) return "—";
@@ -137,7 +132,7 @@ export default function Dashboard() {
     const maxCap = Math.floor(netFixed / 100);
     const totalEquity = data.shareholders_equity + data.retained_earnings;
     const techScore = data.comp_display_level + data.comp_optics_level + data.comp_tracking_level + data.comp_processor_level;
-    const unitCost = 50 + COMP_COSTS.display[data.comp_display_level].cost + COMP_COSTS.optics[data.comp_optics_level].cost + COMP_COSTS.tracking[data.comp_tracking_level].cost + COMP_COSTS.processor[data.comp_processor_level].cost;
+    const unitCost = ASSEMBLY_COST + COMPONENT_COSTS.display[data.comp_display_level].cost + COMPONENT_COSTS.optics[data.comp_optics_level].cost + COMPONENT_COSTS.tracking[data.comp_tracking_level].cost + COMPONENT_COSTS.processor[data.comp_processor_level].cost;
     const totalDebt = data.credit_line + data.bank_loan;
     const totalAssets = data.cash + data.accounts_receivable + (data.inventory_units * unitCost) + netFixed;
     const debtRatio = totalAssets > 0 ? (totalDebt / totalAssets * 100).toFixed(1) : 0;
@@ -290,7 +285,7 @@ export default function Dashboard() {
                         {/* R&D Upgrades Panel */}
                         <div className="glass-panel p-6 flex flex-col gap-5">
                             <SectionHeader title="⚗️ R&D — Component Upgrades" color="text-yellow-400" />
-                            <p className="text-xs text-gray-500 font-mono">Each upgrade costs $50,000 (one-time). Effect applies next quarter (Lag Rule). Cannot skip levels.</p>
+                            <p className="text-xs text-gray-500 font-mono">Each upgrade costs $150,000 (one-time). Effect applies next quarter (Lag Rule). Cannot skip levels.</p>
 
                             {[
                                 { key: "display", label: "Display", level: data.comp_display_level, set: setUpgradeDisplay, val: upgradeDisplay },
@@ -298,15 +293,15 @@ export default function Dashboard() {
                                 { key: "tracking", label: "Tracking", level: data.comp_tracking_level, set: setUpgradeTracking, val: upgradeTracking },
                                 { key: "processor", label: "Processor", level: data.comp_processor_level, set: setUpgradeProcessor, val: upgradeProcessor },
                             ].map(({ key, label, level, set, val }) => {
-                                const cur = COMP_COSTS[key][level];
-                                const next = level < 3 ? COMP_COSTS[key][level + 1] : null;
+                                const cur = COMPONENT_COSTS[key][level];
+                                const next = level < 3 ? COMPONENT_COSTS[key][level + 1] : null;
                                 return (
                                     <div key={key} className="bg-black/30 border border-white/10 rounded-xl p-4">
                                         <div className="flex justify-between items-start">
                                             <div>
                                                 <p className="text-sm font-bold text-white">{label}</p>
                                                 <p className="text-xs text-gray-500 font-mono">Lvl {level}: {cur.name} — ${cur.cost}/unit</p>
-                                                {next ? <p className="text-xs text-yellow-400 font-mono mt-1">→ Lvl {level + 1}: {next.name} — ${next.cost}/unit (+$50k)</p> : <p className="text-xs text-fuchsia-400 font-mono mt-1">✓ MAX LEVEL</p>}
+                                                {next ? <p className="text-xs text-yellow-400 font-mono mt-1">→ Lvl {level + 1}: {next.name} — ${next.cost}/unit (+$150k)</p> : <p className="text-xs text-fuchsia-400 font-mono mt-1">✓ MAX LEVEL</p>}
                                             </div>
                                             {next && !data.is_frozen && (
                                                 <label className={`flex items-center gap-2 cursor-pointer px-3 py-2 rounded border transition ${val ? "border-yellow-400 bg-yellow-500/10 text-yellow-300" : "border-gray-700 text-gray-500"}`}>
@@ -323,7 +318,7 @@ export default function Dashboard() {
                             <div className="bg-black/30 border border-yellow-500/20 rounded-xl p-4 mt-2">
                                 <p className="text-xs text-gray-500 font-mono mb-2 uppercase">Current Tech Score</p>
                                 <p className="text-3xl font-mono font-extrabold text-yellow-400">{techScore} <span className="text-base text-gray-600">/ 12</span></p>
-                                <p className="text-xs text-gray-600 mt-1 font-mono">Unit Build Cost: {fmt(unitCost)} · Assembly: $50 included</p>
+                                <p className="text-xs text-gray-600 mt-1 font-mono">Unit Build Cost: {fmt(unitCost)} · Assembly: ${ASSEMBLY_COST} included</p>
                             </div>
                         </div>
                     </div>
@@ -382,9 +377,10 @@ export default function Dashboard() {
                                                 <BSRow bold label="B3 · Gross Profit" value={fmt(P_L.B3)} />
 
                                                 <p className="text-xs text-gray-600 font-mono uppercase mt-4 mb-2">Operating Expenses</p>
-                                                <BSRow indent label="B4 · Marketing & Brand" value={fmt(P_L.B4)} />
-                                                <BSRow indent label="B5 · R&D (Fees + Maint)" value={fmt(P_L.B5)} />
-                                                <BSRow indent label="B6 · Depreciation" value={fmt(P_L.B6)} />
+                                                <BSRow indent label="B4 · Marketing & Brand" value={`(${fmt(P_L.B4)})`} color="text-red-400" />
+                                                <BSRow indent label="B5 · R&D (Fees + Maint)" value={`(${fmt(P_L.B5)})`} color="text-red-400" />
+                                                <BSRow indent label="B5b · Fixed Overhead" value={`(${fmt(P_L.B5b)})`} color="text-red-400" />
+                                                <BSRow indent label="B6 · Depreciation" value={`(${fmt(P_L.B6)})`} color="text-red-400" />
                                                 <BSRow bold label="B7 · Operating Income (EBIT)" value={fmt(P_L.B7)} />
 
                                                 <p className="text-xs text-gray-600 font-mono uppercase mt-4 mb-2">Financing & Taxes</p>
