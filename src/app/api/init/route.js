@@ -29,17 +29,20 @@ export async function POST(req) {
     ]);
 
     // 2. Insert human players
-    const humanInserts = humanCompanies.map(comp => ({
-      company_id: comp.id,
-      name: comp.name,
-      is_ai: false,
-      prev_price: 1500,
-      prev_production_volume: 2000,
-      prev_brand_spend: 5000,
-      cash: 500000,
-      fixed_assets_gross: 200000,
-      shareholders_equity: 700000
-    }));
+    const humanInserts = humanCompanies.map(comp => {
+      const startingCash = Number(comp.starting_cash) || 500000;
+      return {
+        company_id: comp.id,
+        name: comp.name,
+        is_ai: false,
+        prev_price: 1500,
+        prev_production_volume: 2000,
+        prev_brand_spend: 5000,
+        cash: startingCash,
+        fixed_assets_gross: 200000,
+        shareholders_equity: startingCash + 200000
+      };
+    });
 
     if (humanInserts.length > 0) {
       const { error: humanErr } = await supabase.from('companies').insert(humanInserts);
@@ -70,7 +73,7 @@ export async function POST(req) {
       company_id: 'VALUE_VIRTUA',
       name: 'ValueVirtua',
       is_ai: true,
-      prev_price: 180,
+      prev_price: 500,
       prev_production_volume: 3000,
       prev_brand_spend: 2000,
       comp_display_level: 1,

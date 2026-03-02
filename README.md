@@ -1,7 +1,7 @@
 # 🎮 VR Nexus: Silicon & Senses
 ### *A High-Fidelity Corporate Strategy Simulation*
 
-**VR Nexus** is a competitive business simulation designed for Replit, where players act as the executive board of a VR hardware startup. Over the course of **8 Quarters (2 Fiscal Years)**, teams must navigate the complexities of hardware R&D, manufacturing logistics, and aggressive corporate finance to dominate the market.
+**VR Nexus** is a competitive business simulation, where players act as the executive board of a VR hardware startup. Over the course of **8 Quarters (2 Fiscal Years)**, teams must navigate the complexities of hardware R&D, manufacturing logistics, and aggressive corporate finance to dominate the market.
 
 ---
 

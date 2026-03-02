@@ -27,7 +27,7 @@ export default function GameMaster() {
     const [msg, setMsg] = useState("");
     const [growthRate, setGrowthRate] = useState(7);
     const [humanPlayers, setHumanPlayers] = useState([
-        { id: "AERO_DYNAMICS", name: "Aero Dynamics" }
+        { id: "AERO_DYNAMICS", name: "Aero Dynamics", starting_cash: 500000 }
     ]);
 
     const fetchAll = useCallback(async () => {
@@ -75,7 +75,7 @@ export default function GameMaster() {
 
     const addPlayer = () => {
         const id = `PLAYER_${humanPlayers.length + 1}`;
-        setHumanPlayers([...humanPlayers, { id, name: `Company ${humanPlayers.length + 1}` }]);
+        setHumanPlayers([...humanPlayers, { id, name: `Company ${humanPlayers.length + 1}`, starting_cash: 500000 }]);
     };
 
     const removePlayer = (idx) => {
@@ -356,6 +356,16 @@ export default function GameMaster() {
                                                 onChange={e => updatePlayer(i, 'name', e.target.value)}
                                                 className="bg-black/50 border border-white/10 rounded px-2 py-1 text-xs font-mono text-white focus:border-cyan-400 outline-none"
                                             />
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-xs text-gray-500 font-mono">Cash: $</span>
+                                                <input
+                                                    type="number"
+                                                    placeholder="Starting Cash"
+                                                    value={p.starting_cash}
+                                                    onChange={e => updatePlayer(i, 'starting_cash', Number(e.target.value))}
+                                                    className="bg-black/50 border border-white/10 rounded px-2 py-1 text-xs font-mono text-green-400 focus:border-cyan-400 outline-none w-32"
+                                                />
+                                            </div>
                                         </div>
                                         <button
                                             onClick={() => removePlayer(i)}

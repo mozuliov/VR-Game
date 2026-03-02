@@ -92,7 +92,7 @@ Both AI companies are initialized at game start and their state is updated by th
 - Never purchases Fixed Assets (capacity is fixed).
 
 **ValueVirtua — "The Budget King"**
-- Starting: Tech Score 4, Price $180, Brand Equity 60, ~30% market share.
+- Starting: Tech Score 4, Price $500, Brand Equity 60, ~30% market share.
 - Matches the lowest player price if any player price is within 10% of ValueVirtua's own.
 - If market share drops below 15%, reduces price by $10/unit the next quarter.
 - Never upgrades components (permanently Level 1).

@@ -121,7 +121,7 @@ Two AI-controlled companies anchor the market from the start of the game. Their 
 | Attribute | Value |
 | :--- | :--- |
 | Starting Tech Score | 4 (all Level 1 components) |
-| Starting Price | $180/unit |
+| Starting Price | $500/unit |
 | Starting Brand Equity | 60 points |
 | Starting Market Share | ~30% of initial market |
 

@@ -74,14 +74,28 @@ export const computeLedger = (company, prevLedger, d) => {
     const C5 = C1 - (C2 + C3 + C4); // CFO
 
     const C6 = d.capEx || 0; // CFI
-    const C7 = ((d.newDebt_CreditLine || 0) + (d.newDebt_BankLoan || 0)) -
+    let C7 = ((d.newDebt_CreditLine || 0) + (d.newDebt_BankLoan || 0)) -
         ((d.repayment_CreditLine || 0) + (d.repayment_BankLoan || 0));
     const C8 = 0;
-    const C9 = C7 + C8; // CFF
-    const C10 = C5 - C6 + C9; // Net Change in Cash
+    let C9 = C7 + C8; // CFF
+    let C10 = C5 - C6 + C9; // Net Change in Cash
 
     // ── BALANCE SHEET ──────────────────────────────────────
-    const A1 = (company.cash || 0) + C10;
+    let A1 = (company.cash || 0) + C10;
+
+    // Automatic Credit Line borrowing if cash ends up negative
+    if (A1 < 0) {
+        const emergencyBorrowing = Math.abs(A1);
+        newCreditLine += emergencyBorrowing;
+
+        // Update Cash Flow components to reflect this new financing
+        C7 += emergencyBorrowing;
+        C9 = C7 + C8;
+        C10 = C5 - C6 + C9;
+
+        A1 = 0;
+    }
+
     const A2 = B1 * 0.30;       // AR = 30% of this quarter's revenue
     const A3 = 0;
     const newInventoryUnits = Math.max(0, (company.inventory_units || 0) + d.unitsProduced - d.unitsSold);

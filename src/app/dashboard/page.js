@@ -76,6 +76,11 @@ export default function Dashboard() {
             setPrice(c.prev_price || 500);
             setVolume(c.prev_production_volume || 1000);
             setBrandSpend(c.prev_brand_spend || 5000);
+            setCapex(c.prev_capex || 0);
+            setCreditDraw(c.prev_credit_draw || 0);
+            setCreditRepay(c.prev_credit_repay || 0);
+            setLoanDraw(c.prev_loan_draw || 0);
+            setLoanRepay(c.prev_loan_repay || 0);
         }
         if (mktRes.ok) setMarket(await mktRes.json());
         if (allRes.ok) setAllCompanies(await allRes.json());
@@ -255,19 +260,56 @@ export default function Dashboard() {
                             </div>
 
                             {/* Financing */}
-                            <div>
-                                <label className="block text-xs text-blue-300 mb-1 font-mono uppercase">Financing</label>
-                                <div className="grid grid-cols-2 gap-3">
-                                    <input type="number" min="0" value={creditDraw} onChange={e => setCreditDraw(e.target.value)}
-                                        placeholder="Credit Line Draw" className="bg-black/40 border border-blue-900 rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-400 transition font-mono" />
-                                    <input type="number" min="0" value={creditRepay} onChange={e => setCreditRepay(e.target.value)}
-                                        placeholder="Credit Line Repay" className="bg-black/40 border border-blue-900 rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-400 transition font-mono" />
-                                    <input type="number" min="0" value={loanDraw} onChange={e => setLoanDraw(e.target.value)}
-                                        placeholder="Bank Loan Draw" className="bg-black/40 border border-blue-900 rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-400 transition font-mono" />
-                                    <input type="number" min="0" value={loanRepay} onChange={e => setLoanRepay(e.target.value)}
-                                        placeholder="Bank Loan Repay" className="bg-black/40 border border-blue-900 rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-400 transition font-mono" />
+                            <div className="bg-black/30 border border-blue-900/50 rounded-xl p-4">
+                                <div className="flex justify-between items-start mb-3">
+                                    <div>
+                                        <label className="block text-sm font-bold text-blue-300 font-mono uppercase">Financing</label>
+                                        <p className="text-xs text-gray-500 mt-1">Total Debt Limit (50% Assets): <span className="text-white">{fmt(totalAssets * 0.5)}</span> <br />
+                                            Available to Borrow: <span className="text-green-400">{fmt(Math.max(0, (totalAssets * 0.5) - totalDebt))}</span></p>
+                                    </div>
                                 </div>
-                                <p className="text-xs text-gray-600 mt-1">Credit line: 12% APR / 3% qtr. Bank loan: 6% APR / 1.5% qtr. Total debt ≤ 50% of assets.</p>
+
+                                <div className="flex flex-col gap-4">
+                                    {/* Credit Line */}
+                                    <div className="border border-blue-900/30 rounded p-3">
+                                        <div className="flex justify-between items-center mb-2">
+                                            <span className="text-xs text-blue-200 font-bold uppercase tracking-wider">Credit Line</span>
+                                            <span className="text-xs text-gray-500 font-mono">12% APR / 3% qtr • Current: {fmt(data.credit_line)}</span>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <div>
+                                                <label className="block text-[10px] text-gray-400 mb-1 uppercase tracking-widest">+ DRAW (Borrow)</label>
+                                                <input type="number" min="0" value={creditDraw} onChange={e => setCreditDraw(e.target.value)}
+                                                    placeholder="0" className="w-full bg-black/40 border border-blue-900/50 rounded px-3 py-2 text-green-400 text-sm focus:outline-none focus:border-blue-400 transition font-mono" />
+                                            </div>
+                                            <div>
+                                                <label className="block text-[10px] text-gray-400 mb-1 uppercase tracking-widest">- REPAY (Pay Off)</label>
+                                                <input type="number" min="0" value={creditRepay} onChange={e => setCreditRepay(e.target.value)}
+                                                    placeholder="0" className="w-full bg-black/40 border border-blue-900/50 rounded px-3 py-2 text-red-400 text-sm focus:outline-none focus:border-blue-400 transition font-mono" />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Bank Loan */}
+                                    <div className="border border-blue-900/30 rounded p-3">
+                                        <div className="flex justify-between items-center mb-2">
+                                            <span className="text-xs text-blue-200 font-bold uppercase tracking-wider">Bank Loan</span>
+                                            <span className="text-xs text-gray-500 font-mono">6% APR / 1.5% qtr • Current: {fmt(data.bank_loan)}</span>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <div>
+                                                <label className="block text-[10px] text-gray-400 mb-1 uppercase tracking-widest">+ DRAW (Borrow)</label>
+                                                <input type="number" min="0" value={loanDraw} onChange={e => setLoanDraw(e.target.value)}
+                                                    placeholder="0" className="w-full bg-black/40 border border-blue-900/50 rounded px-3 py-2 text-green-400 text-sm focus:outline-none focus:border-blue-400 transition font-mono" />
+                                            </div>
+                                            <div>
+                                                <label className="block text-[10px] text-gray-400 mb-1 uppercase tracking-widest">- REPAY (Pay Off)</label>
+                                                <input type="number" min="0" value={loanRepay} onChange={e => setLoanRepay(e.target.value)}
+                                                    placeholder="0" className="w-full bg-black/40 border border-blue-900/50 rounded px-3 py-2 text-red-400 text-sm focus:outline-none focus:border-blue-400 transition font-mono" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
 
                             {submitMsg && (
@@ -364,7 +406,9 @@ export default function Dashboard() {
                                     <p className="mt-2">Advance the first quarter to see your performance metrics.</p>
                                 </div>
                             ) : (() => {
-                                const ledger = JSON.parse(data.last_q_ledger);
+                                const ledger = typeof data.last_q_ledger === 'string'
+                                    ? JSON.parse(data.last_q_ledger)
+                                    : data.last_q_ledger;
                                 const { P_L, CFO } = ledger;
                                 return (
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
