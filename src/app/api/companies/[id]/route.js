@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/db';
-import { RD_UPGRADE_FEE } from '@/lib/engine/constants';
+import { RD_UPGRADE_FEE, COMPONENT_COSTS, ASSEMBLY_COST, getPriceMultiplier } from '@/lib/engine/constants';
 
 // Fetch a single company by ID
 export async function GET(request, { params }) {
@@ -51,6 +51,23 @@ export async function PUT(request, { params }) {
         if (upgrade_optics && optics < 3) { optics += 1; rdFee += RD_UPGRADE_FEE; }
         if (upgrade_tracking && tracking < 3) { tracking += 1; rdFee += RD_UPGRADE_FEE; }
         if (upgrade_processor && processor < 3) { processor += 1; rdFee += RD_UPGRADE_FEE; }
+
+        let techScore = COMPONENT_COSTS.display[display].techScore +
+            COMPONENT_COSTS.optics[optics].techScore +
+            COMPONENT_COSTS.tracking[tracking].techScore +
+            COMPONENT_COSTS.processor[processor].techScore;
+
+        let unitCost = ASSEMBLY_COST +
+            COMPONENT_COSTS.display[display].cost +
+            COMPONENT_COSTS.optics[optics].cost +
+            COMPONENT_COSTS.tracking[tracking].cost +
+            COMPONENT_COSTS.processor[processor].cost;
+
+        let maxPrice = unitCost * getPriceMultiplier(techScore);
+
+        if (price > maxPrice) {
+            return NextResponse.json({ error: `Price $${price} exceeds maximum allowed price of $${maxPrice} for your current tech level.` }, { status: 400 });
+        }
 
         const { error: updateErr } = await supabase.from('companies').update({
             prev_price: price,

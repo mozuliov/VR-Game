@@ -1,24 +1,30 @@
 export const COMPONENT_COSTS = {
     display: {
         1: { name: 'LCD', cost: 120, techScore: 1 },
-        2: { name: 'OLED', cost: 240, techScore: 2 },
-        3: { name: 'Micro-OLED', cost: 480, techScore: 3 }
+        2: { name: 'OLED', cost: 150, techScore: 2 },
+        3: { name: 'Micro-OLED', cost: 250, techScore: 3 }
     },
     optics: {
         1: { name: 'Fresnel', cost: 40, techScore: 1 },
-        2: { name: 'Aspheric', cost: 110, techScore: 2 },
-        3: { name: 'Pancake', cost: 210, techScore: 3 }
+        2: { name: 'Aspheric', cost: 80, techScore: 2 },
+        3: { name: 'Pancake', cost: 130, techScore: 3 }
     },
     tracking: {
         1: { name: '3-DoF', cost: 60, techScore: 1 },
-        2: { name: '6-DoF Inside-out', cost: 170, techScore: 2 },
-        3: { name: '6-DoF + Eye Tracking', cost: 380, techScore: 3 }
+        2: { name: '6-DoF Inside-out', cost: 120, techScore: 2 },
+        3: { name: '6-DoF + Eye Tracking', cost: 180, techScore: 3 }
     },
     processor: {
         1: { name: 'Mobile Lite', cost: 90, techScore: 1 },
-        2: { name: 'Standard SoC', cost: 200, techScore: 2 },
-        3: { name: 'High-Performance', cost: 430, techScore: 3 }
+        2: { name: 'Standard SoC', cost: 150, techScore: 2 },
+        3: { name: 'High-Performance', cost: 220, techScore: 3 }
     }
+};
+
+export const getPriceMultiplier = (techScore) => {
+    if (techScore <= 5) return 2.0;    // Budget
+    if (techScore <= 8) return 2.5;    // Mid-Range
+    return 3.0;                        // Premium
 };
 
 // Assembly + QA + packaging + inbound logistics per unit

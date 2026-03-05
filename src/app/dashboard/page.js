@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import {
     LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from "recharts";
-import { COMPONENT_COSTS, ASSEMBLY_COST } from "@/lib/engine/constants";
+import { COMPONENT_COSTS, ASSEMBLY_COST, getPriceMultiplier } from "@/lib/engine/constants";
 
 // Use imported constants directly (COMPONENT_COSTS) — no local copy needed
 
@@ -136,8 +136,14 @@ export default function Dashboard() {
     const netFixed = data.fixed_assets_gross - data.accumulated_depreciation;
     const maxCap = Math.floor(netFixed / 100);
     const totalEquity = data.shareholders_equity + data.retained_earnings;
-    const techScore = data.comp_display_level + data.comp_optics_level + data.comp_tracking_level + data.comp_processor_level;
-    const unitCost = ASSEMBLY_COST + COMPONENT_COSTS.display[data.comp_display_level].cost + COMPONENT_COSTS.optics[data.comp_optics_level].cost + COMPONENT_COSTS.tracking[data.comp_tracking_level].cost + COMPONENT_COSTS.processor[data.comp_processor_level].cost;
+    const dispLvl = data.comp_display_level + (upgradeDisplay && data.comp_display_level < 3 ? 1 : 0);
+    const optLvl = data.comp_optics_level + (upgradeOptics && data.comp_optics_level < 3 ? 1 : 0);
+    const trackLvl = data.comp_tracking_level + (upgradeTracking && data.comp_tracking_level < 3 ? 1 : 0);
+    const procLvl = data.comp_processor_level + (upgradeProcessor && data.comp_processor_level < 3 ? 1 : 0);
+
+    const techScore = dispLvl + optLvl + trackLvl + procLvl;
+    const unitCost = ASSEMBLY_COST + COMPONENT_COSTS.display[dispLvl].cost + COMPONENT_COSTS.optics[optLvl].cost + COMPONENT_COSTS.tracking[trackLvl].cost + COMPONENT_COSTS.processor[procLvl].cost;
+    const maxPrice = unitCost * getPriceMultiplier(techScore);
     const totalDebt = data.credit_line + data.bank_loan;
     const totalAssets = data.cash + data.accounts_receivable + (data.inventory_units * unitCost) + netFixed;
     const debtRatio = totalAssets > 0 ? (totalDebt / totalAssets * 100).toFixed(1) : 0;
@@ -231,9 +237,9 @@ export default function Dashboard() {
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-xs text-cyan-300 mb-1 font-mono uppercase">Unit Price ($)</label>
-                                    <input type="number" min="0" value={price} onChange={e => setPrice(e.target.value)}
-                                        className="w-full bg-black/50 border border-cyan-900 rounded px-3 py-2 text-white focus:outline-none focus:border-cyan-400 transition font-mono" />
-                                    <p className="text-xs text-gray-600 mt-1">Unit Cost: {fmt(unitCost)}</p>
+                                    <input type="number" min="0" max={maxPrice} value={price} onChange={e => setPrice(e.target.value)}
+                                        className={`w-full bg-black/50 border rounded px-3 py-2 text-white focus:outline-none transition font-mono ${price > maxPrice ? 'border-red-500 focus:border-red-500' : 'border-cyan-900 focus:border-cyan-400'}`} />
+                                    <p className={`text-xs mt-1 ${price > maxPrice ? 'text-red-400' : 'text-gray-600'}`}>Max: {fmt(maxPrice)} (Unit Cost: {fmt(unitCost)})</p>
                                 </div>
                                 <div>
                                     <label className="block text-xs text-cyan-300 mb-1 font-mono uppercase">Production Volume</label>
@@ -358,7 +364,7 @@ export default function Dashboard() {
 
                             {/* Component Summary */}
                             <div className="bg-black/30 border border-yellow-500/20 rounded-xl p-4 mt-2">
-                                <p className="text-xs text-gray-500 font-mono mb-2 uppercase">Current Tech Score</p>
+                                <p className="text-xs text-gray-500 font-mono mb-2 uppercase">Tech Score (Next Qtr)</p>
                                 <p className="text-3xl font-mono font-extrabold text-yellow-400">{techScore} <span className="text-base text-gray-600">/ 12</span></p>
                                 <p className="text-xs text-gray-600 mt-1 font-mono">Unit Build Cost: {fmt(unitCost)} · Assembly: ${ASSEMBLY_COST} included</p>
                             </div>

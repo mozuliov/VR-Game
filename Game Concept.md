@@ -36,12 +36,12 @@ Every headset requires four core components. The combination of these components
 
 | Component | Level 1 (Budget) | Level 2 (Mid-Range) | Level 3 (Premium) |
 |-----------|------------------|---------------------|-------------------|
-| Display | LCD ($80) | OLED ($150) | Micro-OLED ($300) |
-| Optics | Fresnel ($20) | Aspheric ($60) | Pancake ($120) |
-| Tracking | 3-DoF ($30) | 6-DoF Inside-out ($100) | 6-DoF + Eye Tracking ($250) |
-| Processor | Mobile Lite ($50) | Standard SoC ($120) | High-Performance ($280) |
+| Display | LCD ($120) | OLED ($150) | Micro-OLED ($250) |
+| Optics | Fresnel ($40) | Aspheric ($80) | Pancake ($130) |
+| Tracking | 3-DoF ($60) | 6-DoF Inside-out ($120) | 6-DoF + Eye Tracking ($180) |
+| Processor | Mobile Lite ($90) | Standard SoC ($150) | High-Performance ($220) |
 
-- **Assembly Cost**: A flat $50 per unit (added to component costs to determine total Unit Build Cost).
+- **Assembly Cost**: A flat $120 per unit (added to component costs to determine total Unit Build Cost).
 - **Research & Development (R&D)**: Upgrading a component by one level requires a one-time **R&D Upgrade Fee** of $50,000. You cannot skip levels; each upgrade must be purchased sequentially.
 - **R&D Maintenance Cost**: Each quarter, a company incurs a **recurring maintenance fee of $5,000 per component level above Level 1** (e.g., two components at Level 2 and one at Level 3 = $15,000/quarter). This represents the ongoing engineering effort to sustain advanced technology.
 
@@ -58,6 +58,17 @@ $$\text{Tech Score} = \sum \text{Tech Points across all four components}$$
 
 - **Minimum Tech Score**: 4 (all Level 1)
 - **Maximum Tech Score**: 12 (all Level 3)
+
+### 2.4 Pricing Limits
+To model consumer willingness-to-pay and prevent unrealistic margin capture, maximum allowable prices are enforced based on the headset's Tech Score. 
+
+$$\text{Max Allowed Price} = \text{Unit Build Cost} \times \text{Tier Multiplier}$$
+
+| Tech Score | Product Tier | Multiplier |
+| :--- | :--- | :--- |
+| **4–5** | Budget | **2.0×** |
+| **6–8** | Mid-Range | **2.5×** |
+| **9–12** | Premium | **3.0×** |
 
 ### 2.5 Production Capacity
 Production volume each quarter is physically limited by a company's **Net Fixed Assets**. To produce more headsets, players must invest in Fixed Assets (factories, assembly lines, tooling).

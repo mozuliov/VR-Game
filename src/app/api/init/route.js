@@ -35,7 +35,7 @@ export async function POST(req) {
         company_id: comp.id,
         name: comp.name,
         is_ai: false,
-        prev_price: 1500,
+        prev_price: 600,
         prev_production_volume: 2000,
         prev_brand_spend: 5000,
         cash: startingCash,
