@@ -29,6 +29,8 @@ export default function GameMaster() {
     const [humanPlayers, setHumanPlayers] = useState([
         { id: "AERO_DYNAMICS", name: "Aero Dynamics", starting_cash: 500000 }
     ]);
+    const [initConfirm, setInitConfirm] = useState(false);
+    const [rollbackConfirm, setRollbackConfirm] = useState(null);
 
     const fetchAll = useCallback(async () => {
         const [compRes, mktRes, histRes] = await Promise.all([
@@ -52,8 +54,13 @@ export default function GameMaster() {
     }, [router, fetchAll]);
 
     const handleInit = async () => {
+        if (!initConfirm) {
+            setInitConfirm(true);
+            setTimeout(() => setInitConfirm(false), 3000); // 3 seconds to click again
+            return;
+        }
+        setInitConfirm(false);
         try {
-            if (!confirm(`Reset the entire simulation with ${humanPlayers.length} human players? All current data will be lost.`)) return;
             setMsg("Initializing...");
             const res = await fetch("/api/init", {
                 method: "POST",
@@ -115,7 +122,13 @@ export default function GameMaster() {
     };
 
     const handleRollback = async (roundId) => {
-        if (!confirm(`Roll back to Q${roundId}? All data after that round will be put into Shadow KPI mode.`)) return;
+        if (rollbackConfirm !== roundId) {
+            setRollbackConfirm(roundId);
+            setTimeout(() => setRollbackConfirm(null), 3000);
+            return;
+        }
+        setRollbackConfirm(null);
+        setMsg(`Rolling back to Q${roundId}...`);
         const res = await fetch(`/api/history/${roundId}`, {
             method: "POST",
             headers: { Authorization: "Bearer silicon_master" },
@@ -386,8 +399,8 @@ export default function GameMaster() {
 
                                 <div className="mt-4 pt-4 border-t border-white/10 flex flex-col gap-2">
                                     <button onClick={handleInit}
-                                        className="py-3 rounded bg-red-900/30 hover:bg-red-900/50 border border-red-500 text-red-100 font-mono transition">
-                                        ⚠ [DANGER] Reset & Initialize {humanPlayers.length} Players
+                                        className={`py-3 rounded border font-mono transition ${initConfirm ? 'bg-orange-600 hover:bg-orange-500 border-orange-400 text-white animate-pulse' : 'bg-red-900/30 hover:bg-red-900/50 border-red-500 text-red-100'}`}>
+                                        {initConfirm ? "⚠ CLICK AGAIN TO SECURE RESET" : `⚠ [DANGER] Reset & Initialize ${humanPlayers.length} Players`}
                                     </button>
                                     <p className="text-[10px] text-center text-gray-600 font-mono">
                                         This will wipe the database and create starting ledgers for all companies above.
@@ -488,8 +501,8 @@ export default function GameMaster() {
                                                     {snap.timeline_status === "active" && (
                                                         <button
                                                             onClick={() => handleRollback(snap.round_id)}
-                                                            className="px-4 py-1.5 bg-violet-900/40 hover:bg-violet-800/60 border border-violet-500 text-violet-200 rounded font-mono text-xs transition">
-                                                            Rollback to Q{snap.round_id}
+                                                            className={`px-4 py-1.5 border rounded font-mono text-xs transition ${rollbackConfirm === snap.round_id ? 'bg-orange-600 hover:bg-orange-500 border-orange-400 text-white animate-pulse' : 'bg-violet-900/40 hover:bg-violet-800/60 border-violet-500 text-violet-200'}`}>
+                                                            {rollbackConfirm === snap.round_id ? '⚠ Confirm Rollback?' : `Rollback to Q${snap.round_id}`}
                                                         </button>
                                                     )}
                                                 </td>

@@ -42,8 +42,9 @@ Every headset requires four core components. The combination of these components
 | Processor | Mobile Lite ($90) | Standard SoC ($150) | High-Performance ($220) |
 
 - **Assembly Cost**: A flat $120 per unit (added to component costs to determine total Unit Build Cost).
-- **Research & Development (R&D)**: Upgrading a component by one level requires a one-time **R&D Upgrade Fee** of $50,000. You cannot skip levels; each upgrade must be purchased sequentially.
-- **R&D Maintenance Cost**: Each quarter, a company incurs a **recurring maintenance fee of $5,000 per component level above Level 1** (e.g., two components at Level 2 and one at Level 3 = $15,000/quarter). This represents the ongoing engineering effort to sustain advanced technology.
+- **Research & Development (R&D)**: Upgrading a component by one level requires a one-time **R&D Upgrade Fee** of $150,000. You cannot skip levels; each upgrade must be purchased sequentially.
+- **R&D Maintenance Cost**: Each quarter, a company incurs a **recurring maintenance fee of $15,000 per component level above Level 1** (e.g., two components at Level 2 and one at Level 3 = $45,000/quarter). This represents the ongoing engineering effort to sustain advanced technology.
+- **Fixed Overhead**: A fixed cost of $80,000 per quarter representing ongoing factory and operations headcount, rent, and insurance.
 
 ### Tech Score
 The **Tech Score** is a single numeric value representing the overall quality of a headset's components, used directly in the Market Engine formula (Section 3).
@@ -148,6 +149,7 @@ Two AI-controlled companies anchor the market from the start of the game. Their 
 ## 4. Financing Options
 
 ### Guardrails (Applies to All Financing)
+- **Automated Borrowing**: If a company's cash balance falls below zero during operations, the system will automatically draw from the Revolving Credit Line to cover the shortfall, ensuring cash never stays negative.
 - **The 50% Rule**: A company's **Total Debt** (Credit Line + Bank Loan) cannot exceed **50% of Total Assets** at the end of any quarter. This enforces solvency discipline.
 - **Technical Default**: If a company exceeds the 50% Debt Rule or their Cash balance reaches $0, the GM places them under a **Liquidity Freeze**: Marketing and R&D spending are frozen at $0 until solvency is restored. The company may still produce and sell.
 
@@ -165,7 +167,7 @@ Two AI-controlled companies anchor the market from the start of the game. Their 
 ## 5. The "Time-Machine" Engine (Technician Specs)
 To support rollbacks and historical lookups, the application will use a **Versioned State System**.
 
-**Logging**: Every round's data is saved as a unique JSON object in a history table within the database (e.g., SQLite or other DB).
+**Logging**: Every round's data is saved as a unique JSON object in a history table within the PostgreSQL database (Supabase).
 
 - **Round_ID**: 4
 - **Timestamp**: 2026-02-13...
@@ -215,9 +217,10 @@ The simulation tracks a sophisticated accounting ledger for every company.
 | **B2** | **Cost of Goods Sold (COGS)** | Units Sold × Unit Build Cost |
 | **B3** | **Gross Profit** | B1 − B2 |
 | **B4** | **Operating Expenses (OpEx)** | Marketing Spend + Brand Spend |
-| **B5** | **R&D Expenses** | One-time Upgrade Fees paid this quarter + Recurring Maintenance ($5,000 × number of component levels above Level 1) |
+| **B5** | **R&D Expenses** | One-time Upgrade Fees paid this quarter + Recurring Maintenance ($15,000 × number of component levels above Level 1) |
+| **B5b**| **Fixed Overhead** | Factory rent, utilities, non-R&D staff, insurance ($80,000 per quarter) |
 | **B6** | **Depreciation Expense** | **12.5% of Fixed Assets Gross (A6) per quarter**, capped at 80% of original asset value (a 20% salvage value is retained) |
-| **B7** | **Operating Income (EBIT)** | B3 − (B4 + B5 + B6) |
+| **B7** | **Operating Income (EBIT)** | B3 − (B4 + B5 + B5b + B6) |
 | **B8** | **Interest Expense** | (Credit Line Balance × 3%) + (Bank Loan Balance × 1.5%) |
 | **B9** | **Net Income** | B7 − B8 |
 
@@ -229,7 +232,7 @@ The simulation tracks a sophisticated accounting ledger for every company.
 | :--- | :--- | :--- |
 | **C1** | **Cash Collected from Customers** | (Current Revenue × 70%) + (Previous Quarter AR) |
 | **C2** | **Cash Paid for Inventory** | (Current Build Costs × 50%) + (Previous Quarter AP) |
-| **C3** | **Cash Paid for OpEx & R&D** | Marketing Spend + Brand Spend + R&D Upgrade Fees + R&D Maintenance |
+| **C3** | **Cash Paid for OpEx & R&D** | Marketing Spend + Brand Spend + R&D Upgrade Fees + R&D Maintenance + Fixed Overhead |
 | **C4** | **Cash Paid for Interest** | Total Interest Accrued this quarter (B8) |
 | **C5** | **Cash Flow from Operations (CFO)** | C1 − (C2 + C3 + C4) |
 | **C6** | **Capital Expenditures (CFI)** | Cash spent purchasing Fixed Assets this quarter |
