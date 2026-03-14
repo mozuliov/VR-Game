@@ -2,6 +2,7 @@
 ### *A High-Fidelity Corporate Strategy Simulation*
 
 **VR Nexus** is a competitive business simulation, where players act as the executive board of a VR hardware startup. Over the course of **8 Quarters (2 Fiscal Years)**, teams must navigate the complexities of hardware R&D, manufacturing logistics, and aggressive corporate finance to dominate the market.
+The game created to serve the last quarter (the second part of the second day) of **Finance for Non-Financial Decision Makers** course and intended to teach participants how decisions impact the company's bottom line.
 
 ---
 
