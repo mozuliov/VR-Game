@@ -1,4 +1,4 @@
-# Case Study: Drive Financial Acumen by Enabling Experiential Learning Among Non-Financial Decision Makers
+# Case Study: Drive Financial Acumen by Enabling Experiential Learning (Business Simulation Game) Among Non-Financial Decision Makers
 
 By: Andrey Mozuliov
 
@@ -86,5 +86,5 @@ We developed this white paper to describe the approach to enabling greater finan
 
 ### Resources
 For technical documentation, engine logic, and source code, visit the official repository:
-[VR-Nexus GitHub Repository](https://github.com/mozuliov/VR-Game)
+[[VR-Nexus GitHub Repository](https://github.com/mozuliov/VR-Game)](https://github.com/mozuliov/VR-Game)
 
