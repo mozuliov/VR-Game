@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, Fragment } from "react";
 import { useRouter } from "next/navigation";
 import {
     LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
@@ -48,6 +48,22 @@ export default function Dashboard() {
     const [companyHistory, setCompanyHistory] = useState([]);
     const [tab, setTab] = useState("decisions");
     const [submitMsg, setSubmitMsg] = useState("");
+    const [expandedRow, setExpandedRow] = useState(null);
+    const [expandedHistory, setExpandedHistory] = useState(null);
+    const [selectedQuarter, setSelectedQuarter] = useState("current");
+
+    const handleExpand = async (id) => {
+        if (expandedRow === id) {
+            setExpandedRow(null);
+            return;
+        }
+        setExpandedRow(id);
+        setExpandedHistory(null);
+        const res = await fetch(`/api/history/company/${id}`);
+        if (res.ok) {
+            setExpandedHistory(await res.json());
+        }
+    };
 
     // Decision form state
     const [price, setPrice] = useState(0);
@@ -373,48 +389,87 @@ export default function Dashboard() {
                 )}
 
                 {/* ─── FINANCIALS TAB ─── */}
-                {tab === "financials" && (
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                        {/* Balance Sheet */}
-                        <div className="glass-panel p-6">
+                {tab === "financials" && (() => {
+                    const displayData = selectedQuarter === "current" 
+                        ? data 
+                        : (companyHistory.find(h => h.round_id.toString() === selectedQuarter)?.raw_company || data);
+
+                    const getDispUnitCost = (comp) => {
+                        return ASSEMBLY_COST + 
+                            (COMPONENT_COSTS.display[comp.comp_display_level || 1]?.cost || 80) + 
+                            (COMPONENT_COSTS.optics[comp.comp_optics_level || 1]?.cost || 20) + 
+                            (COMPONENT_COSTS.tracking[comp.comp_tracking_level || 1]?.cost || 30) + 
+                            (COMPONENT_COSTS.processor[comp.comp_processor_level || 1]?.cost || 50);
+                    };
+                    const dispUnitCost = selectedQuarter === "current" ? unitCost : getDispUnitCost(displayData);
+
+                    const displayNetFixed = (displayData.fixed_assets_gross || 0) - (displayData.accumulated_depreciation || 0);
+                    const displayTotalAssets = (displayData.cash || 0) + (displayData.accounts_receivable || 0) + ((displayData.inventory_units || 0) * dispUnitCost) + displayNetFixed;
+                    const displayTotalEquity = (displayData.shareholders_equity || 0) + (displayData.retained_earnings || 0);
+                    const displayTotalDebt = (displayData.credit_line || 0) + (displayData.bank_loan || 0);
+                    const displayDebtRatio = displayTotalAssets > 0 ? (displayTotalDebt / displayTotalAssets * 100).toFixed(1) : 0;
+
+                    return (
+                        <div className="flex flex-col gap-6">
+                            {/* Quarter Selector */}
+                            <div className="glass-panel p-4 flex items-center justify-between">
+                                <span className="text-cyan-400 font-bold tracking-wider">Financial Statements {selectedQuarter === "current" ? `(Current Q${market?.current_quarter || "—"})` : `(Q${selectedQuarter})`}</span>
+                                <div className="flex items-center gap-3">
+                                    <label className="text-sm font-mono text-gray-400 uppercase">Select Period:</label>
+                                    <select 
+                                        value={selectedQuarter} 
+                                        onChange={(e) => setSelectedQuarter(e.target.value)}
+                                        className="bg-black/50 border border-cyan-900 rounded px-3 py-1 text-white font-mono text-sm focus:outline-none focus:border-cyan-400 pb-1"
+                                    >
+                                        <option value="current">Current (Q{market?.current_quarter || "—"})</option>
+                                        {[...companyHistory].reverse().map(h => (
+                                            <option key={h.round_id} value={h.round_id.toString()}>Q{h.round_id}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                                {/* Balance Sheet */}
+                                <div className="glass-panel p-6">
                             <SectionHeader title="Balance Sheet" />
                             <div className="flex flex-col gap-0.5">
                                 <p className="text-xs text-gray-600 font-mono uppercase mb-2">Current Assets</p>
-                                <BSRow indent label="A1 · Cash" value={fmt(data.cash)} color="text-green-400" />
-                                <BSRow indent label="A2 · Accounts Receivable" value={fmt(data.accounts_receivable)} />
-                                <BSRow indent label="A4 · Inventory" value={fmt(data.inventory_units * unitCost)} sub={`${data.inventory_units} units × ${fmt(unitCost)}`} />
-                                <BSRow bold label="A5 · Total Current Assets" value={fmt(data.cash + data.accounts_receivable + data.inventory_units * unitCost)} />
+                                <BSRow indent label="A1 · Cash" value={fmt(displayData.cash)} color="text-green-400" />
+                                <BSRow indent label="A2 · Accounts Receivable" value={fmt(displayData.accounts_receivable)} />
+                                <BSRow indent label="A4 · Inventory" value={fmt(displayData.inventory_units * dispUnitCost)} sub={`${displayData.inventory_units} units × ${fmt(dispUnitCost)}`} />
+                                <BSRow bold label="A5 · Total Current Assets" value={fmt(displayData.cash + displayData.accounts_receivable + displayData.inventory_units * dispUnitCost)} />
                                 <p className="text-xs text-gray-600 font-mono uppercase mt-4 mb-2">Fixed Assets</p>
-                                <BSRow indent label="A6 · Fixed Assets (Gross)" value={fmt(data.fixed_assets_gross)} />
-                                <BSRow indent label="A7 · Accum. Depreciation" value={`(${fmt(data.accumulated_depreciation)})`} color="text-red-400" />
-                                <BSRow indent bold label="A8 · Net Fixed Assets" value={fmt(netFixed)} color="text-white" />
-                                <BSRow bold label="A9 · Total Assets" value={fmt(totalAssets)} color="text-cyan-400" />
+                                <BSRow indent label="A6 · Fixed Assets (Gross)" value={fmt(displayData.fixed_assets_gross)} />
+                                <BSRow indent label="A7 · Accum. Depreciation" value={`(${fmt(displayData.accumulated_depreciation)})`} color="text-red-400" />
+                                <BSRow indent bold label="A8 · Net Fixed Assets" value={fmt(displayNetFixed)} color="text-white" />
+                                <BSRow bold label="A9 · Total Assets" value={fmt(displayTotalAssets)} color="text-cyan-400" />
                                 <p className="text-xs text-gray-600 font-mono uppercase mt-4 mb-2">Liabilities</p>
-                                <BSRow indent label="A10 · Accounts Payable" value={fmt(data.accounts_payable)} />
-                                <BSRow indent label="A11 · Credit Line" value={fmt(data.credit_line)} color="text-red-400" />
-                                <BSRow indent label="A13 · Bank Loan" value={fmt(data.bank_loan)} color="text-red-400" />
-                                <BSRow bold label="A15 · Total Liabilities" value={fmt(data.credit_line + data.bank_loan + data.accounts_payable)} color="text-red-400" />
+                                <BSRow indent label="A10 · Accounts Payable" value={fmt(displayData.accounts_payable)} />
+                                <BSRow indent label="A11 · Credit Line" value={fmt(displayData.credit_line)} color="text-red-400" />
+                                <BSRow indent label="A13 · Bank Loan" value={fmt(displayData.bank_loan)} color="text-red-400" />
+                                <BSRow bold label="A15 · Total Liabilities" value={fmt(displayData.credit_line + displayData.bank_loan + displayData.accounts_payable)} color="text-red-400" />
                                 <p className="text-xs text-gray-600 font-mono uppercase mt-4 mb-2">Equity</p>
-                                <BSRow indent label="A16 · Shareholders' Equity" value={fmt(data.shareholders_equity)} />
-                                <BSRow indent label="A17 · Retained Earnings" value={fmt(data.retained_earnings)} color={data.retained_earnings >= 0 ? "text-green-400" : "text-red-400"} />
-                                <BSRow bold label="A18 · Total Equity" value={fmt(totalEquity)} color={totalEquity >= 0 ? "text-green-400" : "text-red-400"} />
+                                <BSRow indent label="A16 · Shareholders' Equity" value={fmt(displayData.shareholders_equity)} />
+                                <BSRow indent label="A17 · Retained Earnings" value={fmt(displayData.retained_earnings)} color={displayData.retained_earnings >= 0 ? "text-green-400" : "text-red-400"} />
+                                <BSRow bold label="A18 · Total Equity" value={fmt(displayTotalEquity)} color={displayTotalEquity >= 0 ? "text-green-400" : "text-red-400"} />
                                 <div className="mt-4 p-3 rounded bg-black/30 border border-gray-800 text-xs font-mono text-gray-500">
-                                    Debt / Assets: <span className={parseFloat(debtRatio) > 50 ? "text-red-400" : "text-green-400"}>{debtRatio}%</span> (max 50%)
+                                    Debt / Assets: <span className={parseFloat(displayDebtRatio) > 50 ? "text-red-400" : "text-green-400"}>{displayDebtRatio}%</span> (max 50%)
                                 </div>
                             </div>
                         </div>
 
                         {/* P&L and Cash Flow */}
                         <div className="glass-panel p-6 md:col-span-2 flex flex-col gap-8">
-                            {!data.last_q_ledger ? (
+                            {!displayData.last_q_ledger ? (
                                 <div className="flex flex-col items-center justify-center h-full text-gray-600 font-mono text-sm border-2 border-dashed border-white/5 rounded-xl p-8">
                                     <p>No P&L or Cash Flow data yet.</p>
-                                    <p className="mt-2">Advance the first quarter to see your performance metrics.</p>
+                                    <p className="mt-2">Advance the quarter to see performance metrics here.</p>
                                 </div>
                             ) : (() => {
-                                const ledger = typeof data.last_q_ledger === 'string'
-                                    ? JSON.parse(data.last_q_ledger)
-                                    : data.last_q_ledger;
+                                const ledger = typeof displayData.last_q_ledger === 'string'
+                                    ? JSON.parse(displayData.last_q_ledger)
+                                    : displayData.last_q_ledger;
                                 const { P_L, CFO } = ledger;
                                 return (
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -468,89 +523,21 @@ export default function Dashboard() {
                             })()}
                         </div>
 
-                        {/* Trend Charts */}
-                        <div className="glass-panel p-6 md:col-span-3 flex flex-col gap-6">
-                            <div className="flex items-center justify-between">
-                                <SectionHeader title="📈 Historical Trends" color="text-fuchsia-400" />
-                                <span className="text-xs text-gray-600 font-mono">{companyHistory.length} quarters recorded</span>
-                            </div>
-
-                            {companyHistory.length < 1 ? (
-                                <div className="bg-black/30 rounded-xl border border-fuchsia-500/10 p-4 h-48 flex items-center justify-center">
-                                    <span className="text-gray-600 font-mono text-sm">No snapshot history yet. Advance the first quarter to start recording.</span>
-                                </div>
-                            ) : (
-                                <>
-                                    {/* Equity & Cash chart */}
-                                    <div>
-                                        <p className="text-xs text-gray-500 font-mono uppercase mb-2">Total Equity vs. Cash</p>
-                                        <ResponsiveContainer width="100%" height={200}>
-                                            <LineChart data={companyHistory} margin={{ top: 4, right: 16, left: 0, bottom: 0 }}>
-                                                <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
-                                                <XAxis dataKey="quarter" tick={{ fill: '#6b7280', fontSize: 11 }} />
-                                                <YAxis tickFormatter={v => `$${(v / 1000).toFixed(0)}k`} tick={{ fill: '#6b7280', fontSize: 11 }} width={56} />
-                                                <Tooltip
-                                                    contentStyle={{ background: '#0d1117', border: '1px solid #1f2937', borderRadius: 8, color: '#e5e7eb', fontFamily: 'monospace', fontSize: 12 }}
-                                                    formatter={(v, name) => [`$${Number(v).toLocaleString()}`, name]}
-                                                />
-                                                <Legend wrapperStyle={{ fontSize: 11, color: '#9ca3af' }} />
-                                                <Line type="monotone" dataKey="total_equity" name="Total Equity" stroke="#22d3ee" strokeWidth={2} dot={{ r: 3, fill: '#22d3ee' }} />
-                                                <Line type="monotone" dataKey="cash" name="Cash" stroke="#4ade80" strokeWidth={2} dot={{ r: 3, fill: '#4ade80' }} />
-                                            </LineChart>
-                                        </ResponsiveContainer>
+                                {/* Quarter quick stats */}
+                                <div className="md:col-span-3 grid grid-cols-2 gap-4 mt-2">
+                                    <div className="bg-black/30 border border-white/10 rounded-xl p-4">
+                                        <p className="text-xs text-gray-500 uppercase mb-2 font-mono">Inventory Units {selectedQuarter !== "current" && `(Q${selectedQuarter})`}</p>
+                                        <p className="text-2xl font-mono text-white">{displayData.inventory_units.toLocaleString()} <span className="text-sm text-gray-600">units</span></p>
                                     </div>
-
-                                    {/* Brand Equity & Tech Score chart */}
-                                    <div>
-                                        <p className="text-xs text-gray-500 font-mono uppercase mb-2">Brand Equity & Tech Score</p>
-                                        <ResponsiveContainer width="100%" height={180}>
-                                            <LineChart data={companyHistory} margin={{ top: 4, right: 16, left: 0, bottom: 0 }}>
-                                                <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
-                                                <XAxis dataKey="quarter" tick={{ fill: '#6b7280', fontSize: 11 }} />
-                                                <YAxis tick={{ fill: '#6b7280', fontSize: 11 }} width={36} />
-                                                <Tooltip
-                                                    contentStyle={{ background: '#0d1117', border: '1px solid #1f2937', borderRadius: 8, color: '#e5e7eb', fontFamily: 'monospace', fontSize: 12 }}
-                                                />
-                                                <Legend wrapperStyle={{ fontSize: 11, color: '#9ca3af' }} />
-                                                <Line type="monotone" dataKey="brand_equity" name="Brand Equity" stroke="#e879f9" strokeWidth={2} dot={{ r: 3, fill: '#e879f9' }} />
-                                                <Line type="monotone" dataKey="tech_score" name="Tech Score" stroke="#facc15" strokeWidth={2} dot={{ r: 3, fill: '#facc15' }} />
-                                            </LineChart>
-                                        </ResponsiveContainer>
+                                    <div className="bg-black/30 border border-white/10 rounded-xl p-4">
+                                        <p className="text-xs text-gray-500 uppercase mb-2 font-mono">Debt (Credit / Loan) {selectedQuarter !== "current" && `(Q${selectedQuarter})`}</p>
+                                        <p className="text-2xl font-mono text-red-400">{fmt(displayData.credit_line)} <span className="text-sm text-gray-600">/ {fmt(displayData.bank_loan)}</span></p>
                                     </div>
-
-                                    {/* Inventory units chart */}
-                                    <div>
-                                        <p className="text-xs text-gray-500 font-mono uppercase mb-2">Inventory Units (End of Quarter)</p>
-                                        <ResponsiveContainer width="100%" height={160}>
-                                            <LineChart data={companyHistory} margin={{ top: 4, right: 16, left: 0, bottom: 0 }}>
-                                                <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
-                                                <XAxis dataKey="quarter" tick={{ fill: '#6b7280', fontSize: 11 }} />
-                                                <YAxis tick={{ fill: '#6b7280', fontSize: 11 }} width={48} />
-                                                <Tooltip
-                                                    contentStyle={{ background: '#0d1117', border: '1px solid #1f2937', borderRadius: 8, color: '#e5e7eb', fontFamily: 'monospace', fontSize: 12 }}
-                                                />
-                                                <Legend wrapperStyle={{ fontSize: 11, color: '#9ca3af' }} />
-                                                <Line type="monotone" dataKey="inventory_units" name="Inventory (units)" stroke="#fb923c" strokeWidth={2} dot={{ r: 3, fill: '#fb923c' }} />
-                                            </LineChart>
-                                        </ResponsiveContainer>
-                                    </div>
-                                </>
-                            )}
-
-                            {/* Current-state quick stats */}
-                            <div className="grid grid-cols-2 gap-4 pt-2 border-t border-white/5">
-                                <div className="bg-black/30 border border-white/10 rounded-xl p-4">
-                                    <p className="text-xs text-gray-500 uppercase mb-2 font-mono">Inventory (Current)</p>
-                                    <p className="text-2xl font-mono text-white">{data.inventory_units.toLocaleString()} <span className="text-sm text-gray-600">units</span></p>
-                                </div>
-                                <div className="bg-black/30 border border-white/10 rounded-xl p-4">
-                                    <p className="text-xs text-gray-500 uppercase mb-2 font-mono">Debt (Credit / Loan)</p>
-                                    <p className="text-2xl font-mono text-red-400">{fmt(data.credit_line)} <span className="text-sm text-gray-600">/ {fmt(data.bank_loan)}</span></p>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                )}
+                    );
+                })()}
 
                 {/* ─── MARKET INTEL TAB ─── */}
                 {tab === "market" && (
@@ -628,22 +615,89 @@ export default function Dashboard() {
                                     const eq = c.shareholders_equity + c.retained_earnings;
                                     const isMe = c.company_id === companyId;
                                     return (
-                                        <tr key={c.company_id}
-                                            className={`border-b border-white/5 transition ${isMe ? "bg-cyan-500/5 border-l-2 border-l-cyan-400" : "hover:bg-white/5"}`}>
-                                            <td className="py-3 pl-2">
-                                                <span className={`font-bold text-lg ${i === 0 ? "text-yellow-400" : i === 1 ? "text-gray-400" : i === 2 ? "text-orange-600" : "text-gray-600"}`}>
-                                                    #{c.rank}
-                                                </span>
-                                            </td>
-                                            <td className="py-3">
-                                                <p className="font-bold text-white">{c.name} {isMe && <span className="text-cyan-400 text-xs">(You)</span>}</p>
-                                                <p className="text-xs text-gray-600">{c.is_ai ? "AI Competitor" : "Player"} · {c.is_frozen ? "🔴 Frozen" : "🟢 Active"}</p>
-                                            </td>
-                                            <td className={`py-3 text-right ${eq >= 0 ? "text-green-400" : "text-red-400"}`}>{fmt(eq)}</td>
-                                            <td className="py-3 text-right text-fuchsia-400">{c.brand_equity} pts</td>
-                                            <td className="py-3 text-right text-yellow-400">{ts} / 12</td>
-                                            <td className="py-3 text-right pr-2 text-white font-bold">{parseInt(c.score).toLocaleString()}</td>
-                                        </tr>
+                                        <Fragment key={c.company_id}>
+                                            <tr onClick={() => handleExpand(c.company_id)}
+                                                className={`cursor-pointer border-b border-white/5 transition ${isMe ? "bg-cyan-500/5 border-l-2 border-l-cyan-400" : "hover:bg-white/5"}`}>
+                                                <td className="py-3 pl-2">
+                                                    <span className={`font-bold text-lg ${i === 0 ? "text-yellow-400" : i === 1 ? "text-gray-400" : i === 2 ? "text-orange-600" : "text-gray-600"}`}>
+                                                        #{c.rank}
+                                                    </span>
+                                                </td>
+                                                <td className="py-3">
+                                                    <p className="font-bold text-white flex items-center gap-2">
+                                                        {c.name} {isMe && <span className="text-cyan-400 text-xs">(You)</span>}
+                                                        <span className="text-gray-600 text-[10px]">{expandedRow === c.company_id ? "▲" : "▼"}</span>
+                                                    </p>
+                                                    <p className="text-xs text-gray-600">{c.is_ai ? "AI Competitor" : "Player"} · {c.is_frozen ? "🔴 Frozen" : "🟢 Active"}</p>
+                                                </td>
+                                                <td className={`py-3 text-right ${eq >= 0 ? "text-green-400" : "text-red-400"}`}>{fmt(eq)}</td>
+                                                <td className="py-3 text-right text-fuchsia-400">{c.brand_equity} pts</td>
+                                                <td className="py-3 text-right text-yellow-400">{ts} / 12</td>
+                                                <td className="py-3 text-right pr-2 text-white font-bold">{parseInt(c.score).toLocaleString()}</td>
+                                            </tr>
+                                            {expandedRow === c.company_id && (
+                                                <tr className="bg-black/80 border-b border-cyan-500/20">
+                                                    <td colSpan="6" className="p-4">
+                                                        {!expandedHistory ? (
+                                                            <div className="text-center text-cyan-400 font-mono text-sm py-8 animate-pulse">Retrieving historical data...</div>
+                                                        ) : expandedHistory.length === 0 ? (
+                                                            <div className="text-center text-gray-500 font-mono text-sm py-8">No historical data available.</div>
+                                                        ) : (
+                                                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                                                <div>
+                                                                    <p className="text-xs text-fuchsia-400 font-mono uppercase mb-2">Weighted Score</p>
+                                                                    <ResponsiveContainer width="100%" height={160}>
+                                                                        <LineChart data={expandedHistory} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+                                                                            <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
+                                                                            <XAxis dataKey="quarter" tick={{ fill: '#6b7280', fontSize: 10 }} />
+                                                                            <YAxis tick={{ fill: '#6b7280', fontSize: 10 }} />
+                                                                            <Tooltip contentStyle={{ background: '#0d1117', border: '1px solid #1f2937', borderRadius: 8, color: '#e5e7eb', fontSize: 11 }} />
+                                                                            <Line type="monotone" dataKey="weighted_score" stroke="#facc15" strokeWidth={2} dot={{ r: 2 }} />
+                                                                        </LineChart>
+                                                                    </ResponsiveContainer>
+                                                                </div>
+                                                                <div>
+                                                                    <p className="text-xs text-cyan-400 font-mono uppercase mb-2">Total Equity</p>
+                                                                    <ResponsiveContainer width="100%" height={160}>
+                                                                        <LineChart data={expandedHistory} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+                                                                            <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
+                                                                            <XAxis dataKey="quarter" tick={{ fill: '#6b7280', fontSize: 10 }} />
+                                                                            <YAxis tickFormatter={v => `$${(v/1000).toFixed(0)}k`} tick={{ fill: '#6b7280', fontSize: 10 }} />
+                                                                            <Tooltip contentStyle={{ background: '#0d1117', border: '1px solid #1f2937', borderRadius: 8, color: '#e5e7eb', fontSize: 11 }} formatter={v => "$" + v.toLocaleString()} />
+                                                                            <Line type="monotone" dataKey="total_equity" stroke="#22d3ee" strokeWidth={2} dot={{ r: 2 }} />
+                                                                        </LineChart>
+                                                                    </ResponsiveContainer>
+                                                                </div>
+                                                                <div>
+                                                                    <p className="text-xs text-fuchsia-400 font-mono uppercase mb-2">Brand Equity</p>
+                                                                    <ResponsiveContainer width="100%" height={160}>
+                                                                        <LineChart data={expandedHistory} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+                                                                            <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
+                                                                            <XAxis dataKey="quarter" tick={{ fill: '#6b7280', fontSize: 10 }} />
+                                                                            <YAxis tick={{ fill: '#6b7280', fontSize: 10 }} />
+                                                                            <Tooltip contentStyle={{ background: '#0d1117', border: '1px solid #1f2937', borderRadius: 8, color: '#e5e7eb', fontSize: 11 }} />
+                                                                            <Line type="monotone" dataKey="brand_equity" stroke="#e879f9" strokeWidth={2} dot={{ r: 2 }} />
+                                                                        </LineChart>
+                                                                    </ResponsiveContainer>
+                                                                </div>
+                                                                <div>
+                                                                    <p className="text-xs text-green-400 font-mono uppercase mb-2">Market Share</p>
+                                                                    <ResponsiveContainer width="100%" height={160}>
+                                                                        <LineChart data={expandedHistory} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+                                                                            <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
+                                                                            <XAxis dataKey="quarter" tick={{ fill: '#6b7280', fontSize: 10 }} />
+                                                                            <YAxis tick={{ fill: '#6b7280', fontSize: 10 }} tickFormatter={v => `${v}%`} />
+                                                                            <Tooltip contentStyle={{ background: '#0d1117', border: '1px solid #1f2937', borderRadius: 8, color: '#e5e7eb', fontSize: 11 }} formatter={v => v + "%"} />
+                                                                            <Line type="monotone" dataKey="market_share" stroke="#4ade80" strokeWidth={2} dot={{ r: 2 }} />
+                                                                        </LineChart>
+                                                                    </ResponsiveContainer>
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </Fragment>
                                     );
                                 })}
                             </tbody>

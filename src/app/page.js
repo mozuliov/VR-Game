@@ -12,7 +12,7 @@ export default function Home() {
   const handlePlayerLogin = (e) => {
     e.preventDefault();
     if (companyId.trim().length < 3) {
-      setError("Company ID must be at least 3 characters.");
+      setError("Secret Word must be at least 3 characters.");
       return;
     }
     setError("");
@@ -63,12 +63,12 @@ export default function Home() {
             Founder Access
           </h2>
           <div>
-            <label className="block text-sm text-gray-400 mb-1 font-mono">Company ID</label>
+            <label className="block text-sm text-gray-400 mb-1 font-mono">Secret Word</label>
             <input
               type="text"
               value={companyId}
-              onChange={(e) => setCompanyId(e.target.value)}
-              placeholder="e.g. AERO_DYNAMICS"
+              onChange={(e) => setCompanyId(e.target.value.toUpperCase().replace(/\s/g, '_'))}
+              placeholder="e.g. AERO_SECRET"
               className="w-full bg-black/50 border border-cyan-400/30 rounded px-4 py-3 text-white focus:outline-none focus:border-cyan-400 neon-border transition-colors box-border"
             />
           </div>

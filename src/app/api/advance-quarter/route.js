@@ -61,6 +61,12 @@ export async function POST(request) {
         // Allocate demand using the Logit Market Model
         const sortedCompanies = allocateSales(companies, marketState.market_size);
 
+        // Calculate actual market share based on exact units sold
+        const totalUnitsSold = companies.reduce((sum, c) => sum + (c.actual_sales || 0), 0);
+        for (const company of companies) {
+            company.market_share = totalUnitsSold > 0 ? ((company.actual_sales || 0) / totalUnitsSold) * 100 : 0;
+        }
+
         // --- STEP 4: Compute Financials for each company ---
         for (const company of companies) {
             let prevLedger = marketState.current_quarter > 1 ? {
@@ -110,6 +116,7 @@ export async function POST(request) {
                 bank_loan: l.BS.A13,
                 retained_earnings: l.BS.A17,
                 brand_equity: company.new_brand_equity,
+                market_share: company.market_share || 0,
                 is_frozen: newFrozen,
                 last_q_ledger: { P_L: l.P_L, CFO: l.CFO, unitBuildCost: l.unitBuildCost },
                 prev_capex: 0,

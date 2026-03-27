@@ -32,6 +32,11 @@ export async function GET(request, { params }) {
             const totalDebt = (company.credit_line || 0) + (company.bank_loan || 0);
             const totalEquity = (company.shareholders_equity || 0) + (company.retained_earnings || 0);
 
+            let allComps = stateData.companies || [];
+            let totalMkt = allComps.reduce((s, x) => s + Math.max(x.brand_equity || 0, 0), 0) || 1;
+            let mktShare = (company.brand_equity || 0) / totalMkt;
+            let weighted_score = (0.4 * totalEquity + 0.4 * mktShare * 100000 + 0.2 * (company.brand_equity || 0));
+
             history.push({
                 quarter: `Q${snap.round_id}`,
                 round_id: snap.round_id,
@@ -41,6 +46,7 @@ export async function GET(request, { params }) {
                 retained_earnings: Math.round(company.retained_earnings || 0),
                 total_assets: Math.round(totalAssets),
                 total_debt: Math.round(totalDebt),
+                weighted_score: Math.round(weighted_score),
                 // Operations
                 brand_equity: Math.round(company.brand_equity || 0),
                 inventory_units: company.inventory_units || 0,
@@ -52,6 +58,9 @@ export async function GET(request, { params }) {
                     (company.comp_processor_level || 1),
                 // Market
                 market_size: market.market_size || 0,
+                market_share: Number((company.market_share || 0).toFixed(1)),
+                // Full company data for financial statements
+                raw_company: company,
             });
         }
 

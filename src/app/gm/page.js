@@ -1,6 +1,9 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, Fragment } from "react";
+import {
+    LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
+} from "recharts";
 import { useRouter } from "next/navigation";
 
 function fmt(n) {
@@ -27,10 +30,25 @@ export default function GameMaster() {
     const [msg, setMsg] = useState("");
     const [growthRate, setGrowthRate] = useState(7);
     const [humanPlayers, setHumanPlayers] = useState([
-        { id: "AERO_DYNAMICS", name: "Aero Dynamics", starting_cash: 500000 }
+        { id: "AERO_SECRET", name: "Aero Dynamics", starting_cash: 500000 }
     ]);
     const [initConfirm, setInitConfirm] = useState(false);
     const [rollbackConfirm, setRollbackConfirm] = useState(null);
+    const [expandedRow, setExpandedRow] = useState(null);
+    const [expandedHistory, setExpandedHistory] = useState(null);
+
+    const handleExpand = async (id) => {
+        if (expandedRow === id) {
+            setExpandedRow(null);
+            return;
+        }
+        setExpandedRow(id);
+        setExpandedHistory(null);
+        const res = await fetch(`/api/history/company/${id}`);
+        if (res.ok) {
+            setExpandedHistory(await res.json());
+        }
+    };
 
     const fetchAll = useCallback(async () => {
         const [compRes, mktRes, histRes] = await Promise.all([
@@ -81,7 +99,7 @@ export default function GameMaster() {
     };
 
     const addPlayer = () => {
-        const id = `PLAYER_${humanPlayers.length + 1}`;
+        const id = `SECRET_${humanPlayers.length + 1}`;
         setHumanPlayers([...humanPlayers, { id, name: `Company ${humanPlayers.length + 1}`, starting_cash: 500000 }]);
     };
 
@@ -236,28 +254,95 @@ export default function GameMaster() {
                             </thead>
                             <tbody>
                                 {leaderboard.map((c, idx) => (
-                                    <tr key={c.company_id} className="border-b border-white/5 hover:bg-white/5 transition">
-                                        <td className="py-3 pl-2 font-bold text-lg">
-                                            <span className={idx === 0 ? "text-yellow-400" : idx === 1 ? "text-gray-400" : idx === 2 ? "text-orange-600" : "text-gray-600"}>
-                                                #{c.rank}
-                                            </span>
-                                        </td>
-                                        <td className="py-3">
-                                            <p className="font-bold text-white">{c.name}</p>
-                                            <p className="text-xs text-gray-600">{c.is_ai ? "AI" : "Player"} · {c.company_id}</p>
-                                        </td>
-                                        <td className={`py-3 text-right ${c.cash >= 0 ? "text-green-400" : "text-red-400"}`}>{fmt(c.cash)}</td>
-                                        <td className={`py-3 text-right ${c.totalEquity >= 0 ? "text-green-400" : "text-red-400"}`}>{fmt(c.totalEquity)}</td>
-                                        <td className="py-3 text-right text-fuchsia-400">{c.brand_equity}</td>
-                                        <td className="py-3 text-right text-yellow-400">{c.techScore}/12</td>
-                                        <td className="py-3 text-right text-red-400">{fmt(c.credit_line + c.bank_loan)}</td>
-                                        <td className="py-3 text-right">
-                                            <span className={`px-2 py-0.5 rounded text-xs font-mono ${c.is_frozen ? "bg-red-900/40 text-red-300" : "bg-green-900/40 text-green-300"}`}>
-                                                {c.is_frozen ? "FROZEN" : "ACTIVE"}
-                                            </span>
-                                        </td>
-                                        <td className="py-3 text-right pr-2 font-bold text-white">{c.score.toLocaleString()}</td>
-                                    </tr>
+                                    <Fragment key={c.company_id}>
+                                        <tr onClick={() => handleExpand(c.company_id)} className="cursor-pointer border-b border-white/5 hover:bg-white/5 transition">
+                                            <td className="py-3 pl-2 font-bold text-lg">
+                                                <span className={idx === 0 ? "text-yellow-400" : idx === 1 ? "text-gray-400" : idx === 2 ? "text-orange-600" : "text-gray-600"}>
+                                                    #{c.rank}
+                                                </span>
+                                            </td>
+                                            <td className="py-3">
+                                                <p className="font-bold text-white flex items-center gap-2">
+                                                    {c.name}
+                                                    <span className="text-gray-600 text-[10px]">{expandedRow === c.company_id ? "▲" : "▼"}</span>
+                                                </p>
+                                                <p className="text-xs text-gray-600">{c.is_ai ? "AI" : "Player"} · {c.company_id}</p>
+                                            </td>
+                                            <td className={`py-3 text-right ${c.cash >= 0 ? "text-green-400" : "text-red-400"}`}>{fmt(c.cash)}</td>
+                                            <td className={`py-3 text-right ${c.totalEquity >= 0 ? "text-green-400" : "text-red-400"}`}>{fmt(c.totalEquity)}</td>
+                                            <td className="py-3 text-right text-fuchsia-400">{c.brand_equity}</td>
+                                            <td className="py-3 text-right text-yellow-400">{c.techScore}/12</td>
+                                            <td className="py-3 text-right text-red-400">{fmt(c.credit_line + c.bank_loan)}</td>
+                                            <td className="py-3 text-right">
+                                                <span className={`px-2 py-0.5 rounded text-xs font-mono ${c.is_frozen ? "bg-red-900/40 text-red-300" : "bg-green-900/40 text-green-300"}`}>
+                                                    {c.is_frozen ? "FROZEN" : "ACTIVE"}
+                                                </span>
+                                            </td>
+                                            <td className="py-3 text-right pr-2 font-bold text-white">{c.score.toLocaleString()}</td>
+                                        </tr>
+                                        {expandedRow === c.company_id && (
+                                            <tr className="bg-black/80 border-b border-fuchsia-500/20">
+                                                <td colSpan="9" className="p-4">
+                                                    {!expandedHistory ? (
+                                                        <div className="text-center text-fuchsia-400 font-mono text-sm py-8 animate-pulse">Retrieving historical data...</div>
+                                                    ) : expandedHistory.length === 0 ? (
+                                                        <div className="text-center text-gray-500 font-mono text-sm py-8">No historical data available.</div>
+                                                    ) : (
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                                            <div>
+                                                                <p className="text-xs text-fuchsia-400 font-mono uppercase mb-2">Weighted Score</p>
+                                                                <ResponsiveContainer width="100%" height={160}>
+                                                                    <LineChart data={expandedHistory} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+                                                                        <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
+                                                                        <XAxis dataKey="quarter" tick={{ fill: '#6b7280', fontSize: 10 }} />
+                                                                        <YAxis tick={{ fill: '#6b7280', fontSize: 10 }} />
+                                                                        <Tooltip contentStyle={{ background: '#0d1117', border: '1px solid #1f2937', borderRadius: 8, color: '#e5e7eb', fontSize: 11 }} />
+                                                                        <Line type="monotone" dataKey="weighted_score" stroke="#facc15" strokeWidth={2} dot={{ r: 2 }} />
+                                                                    </LineChart>
+                                                                </ResponsiveContainer>
+                                                            </div>
+                                                            <div>
+                                                                <p className="text-xs text-cyan-400 font-mono uppercase mb-2">Total Equity</p>
+                                                                <ResponsiveContainer width="100%" height={160}>
+                                                                    <LineChart data={expandedHistory} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+                                                                        <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
+                                                                        <XAxis dataKey="quarter" tick={{ fill: '#6b7280', fontSize: 10 }} />
+                                                                        <YAxis tickFormatter={v => `$${(v/1000).toFixed(0)}k`} tick={{ fill: '#6b7280', fontSize: 10 }} />
+                                                                        <Tooltip contentStyle={{ background: '#0d1117', border: '1px solid #1f2937', borderRadius: 8, color: '#e5e7eb', fontSize: 11 }} formatter={v => "$" + v.toLocaleString()} />
+                                                                        <Line type="monotone" dataKey="total_equity" stroke="#22d3ee" strokeWidth={2} dot={{ r: 2 }} />
+                                                                    </LineChart>
+                                                                </ResponsiveContainer>
+                                                            </div>
+                                                            <div>
+                                                                <p className="text-xs text-fuchsia-400 font-mono uppercase mb-2">Brand Equity</p>
+                                                                <ResponsiveContainer width="100%" height={160}>
+                                                                    <LineChart data={expandedHistory} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+                                                                        <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
+                                                                        <XAxis dataKey="quarter" tick={{ fill: '#6b7280', fontSize: 10 }} />
+                                                                        <YAxis tick={{ fill: '#6b7280', fontSize: 10 }} />
+                                                                        <Tooltip contentStyle={{ background: '#0d1117', border: '1px solid #1f2937', borderRadius: 8, color: '#e5e7eb', fontSize: 11 }} />
+                                                                        <Line type="monotone" dataKey="brand_equity" stroke="#e879f9" strokeWidth={2} dot={{ r: 2 }} />
+                                                                    </LineChart>
+                                                                </ResponsiveContainer>
+                                                            </div>
+                                                            <div>
+                                                                <p className="text-xs text-green-400 font-mono uppercase mb-2">Market Share</p>
+                                                                <ResponsiveContainer width="100%" height={160}>
+                                                                    <LineChart data={expandedHistory} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+                                                                        <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
+                                                                        <XAxis dataKey="quarter" tick={{ fill: '#6b7280', fontSize: 10 }} />
+                                                                        <YAxis tick={{ fill: '#6b7280', fontSize: 10 }} tickFormatter={v => `${v}%`} />
+                                                                        <Tooltip contentStyle={{ background: '#0d1117', border: '1px solid #1f2937', borderRadius: 8, color: '#e5e7eb', fontSize: 11 }} formatter={v => v + "%"} />
+                                                                        <Line type="monotone" dataKey="market_share" stroke="#4ade80" strokeWidth={2} dot={{ r: 2 }} />
+                                                                    </LineChart>
+                                                                </ResponsiveContainer>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </Fragment>
                                 ))}
                             </tbody>
                         </table>
@@ -357,17 +442,17 @@ export default function GameMaster() {
                                         <div className="flex-1 flex flex-col gap-2">
                                             <input
                                                 type="text"
-                                                placeholder="Company ID (e.g. AERO)"
-                                                value={p.id}
-                                                onChange={e => updatePlayer(i, 'id', e.target.value.toUpperCase().replace(/\s/g, '_'))}
-                                                className="bg-black/50 border border-white/10 rounded px-2 py-1 text-xs font-mono text-cyan-400 focus:border-cyan-400 outline-none"
-                                            />
-                                            <input
-                                                type="text"
-                                                placeholder="Display Name"
+                                                placeholder="Company Name"
                                                 value={p.name}
                                                 onChange={e => updatePlayer(i, 'name', e.target.value)}
                                                 className="bg-black/50 border border-white/10 rounded px-2 py-1 text-xs font-mono text-white focus:border-cyan-400 outline-none"
+                                            />
+                                            <input
+                                                type="text"
+                                                placeholder="Secret Word (No Spaces)"
+                                                value={p.id}
+                                                onChange={e => updatePlayer(i, 'id', e.target.value.toUpperCase().replace(/\s/g, '_'))}
+                                                className="bg-black/50 border border-white/10 rounded px-2 py-1 text-xs font-mono text-cyan-400 focus:border-cyan-400 outline-none"
                                             />
                                             <div className="flex items-center gap-2">
                                                 <span className="text-xs text-gray-500 font-mono">Cash: $</span>
