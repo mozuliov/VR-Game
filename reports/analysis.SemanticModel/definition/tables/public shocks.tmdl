@@ -1,0 +1,58 @@
+table 'public shocks'
+	lineageTag: a2dbc072-bb25-4508-942a-9982ec394acc
+
+	column id
+		dataType: int64
+		formatString: 0
+		lineageTag: 2005b9f4-2de0-401b-a8ff-9046764f0f8c
+		summarizeBy: sum
+		sourceColumn: id
+
+		annotation SummarizationSetBy = Automatic
+
+	column name
+		dataType: string
+		lineageTag: d752ebd7-7b86-4b0d-a22b-e95e4536854e
+		summarizeBy: none
+		sourceColumn: name
+
+		annotation SummarizationSetBy = Automatic
+
+	column description
+		dataType: string
+		lineageTag: f6eabd30-5a41-48c9-8adc-a2910572e9ff
+		summarizeBy: none
+		sourceColumn: description
+
+		annotation SummarizationSetBy = Automatic
+
+	column applied_quarter
+		dataType: int64
+		formatString: 0
+		lineageTag: 9dcd85bb-5749-4b9a-808d-a52e7bc59fff
+		summarizeBy: sum
+		sourceColumn: applied_quarter
+
+		annotation SummarizationSetBy = Automatic
+
+	column effect_json
+		dataType: string
+		lineageTag: b501663b-413a-408a-b9c3-dd8c6726f42d
+		summarizeBy: none
+		sourceColumn: effect_json
+
+		annotation SummarizationSetBy = Automatic
+
+	partition 'public shocks' = m
+		mode: import
+		source =
+				let
+				  Source = PostgreSQL.Database("db.abkjmgfazfhhncseybvz.supabase.co", "postgres"),
+				  #"Navigation 1" = Source{[Schema = "public", Item = "shocks"]}[Data]
+				in
+				  #"Navigation 1"
+
+	annotation PBI_NavigationStepName = Navigation
+
+	annotation PBI_ResultType = Table
+

@@ -1,0 +1,15 @@
+relationship 1e365783-3797-426d-84af-6c879ae19f41
+	joinOnDateBehavior: datePartOnly
+	fromColumn: 'auth custom_oauth_providers'.discovery_cached_at
+	toColumn: LocalDateTable_4110bd3f-6f3d-4251-bce8-cdd1932fae28.Date
+
+relationship 84d13717-1522-409e-aa09-2a8b436a5d54
+	joinOnDateBehavior: datePartOnly
+	fromColumn: 'auth custom_oauth_providers'.created_at
+	toColumn: LocalDateTable_b9ce562c-15b8-4ad5-a27a-693261a0e1ea.Date
+
+relationship ca328d9a-ed98-4bd4-be10-e3a95ee2c1ec
+	joinOnDateBehavior: datePartOnly
+	fromColumn: 'auth custom_oauth_providers'.updated_at
+	toColumn: LocalDateTable_0fc842a0-3608-499d-aa1c-1f4c6c389c50.Date
+

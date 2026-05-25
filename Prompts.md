@@ -1,0 +1,3 @@
+крупный план глаза и брови. Мужчина в шоке. Он как будто оглушон. Уши заложены. Слышно биение серда. Камера медленно отъезжает назад показывая лицо целиком, а затем мужчину стоящего возле стола в комнате для совещаний. Сидящие рядом с ним люди смотрят на него вопросительно ожидая ответа.
+
+A close-up of the eye and eyebrow. The man is in shock. It's as if he's been deafened. His ears are clogged. His heartbeat can be heard. The camera slowly pulls back to show his entire face, and then the man standing near a table in a conference room. The people sitting next to him look at him questioningly, waiting for an answer.

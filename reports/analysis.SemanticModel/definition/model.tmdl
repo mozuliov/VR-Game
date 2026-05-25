@@ -1,0 +1,26 @@
+model Model
+	culture: en-US
+	defaultPowerBIDataSourceVersion: powerBI_V3
+	sourceQueryCulture: en-CA
+	dataAccessOptions
+		legacyRedirects
+		returnErrorValuesAsNull
+
+annotation __PBI_TimeIntelligenceEnabled = 1
+
+annotation PBI_QueryOrder = ["auth custom_oauth_providers","DATA","public history_snapshots","public market_state","public shocks"]
+
+annotation PBI_ProTooling = ["DevMode"]
+
+ref table 'auth custom_oauth_providers'
+ref table DateTableTemplate_64f8397c-35ce-4d76-8b7b-28c802946d6e
+ref table LocalDateTable_4110bd3f-6f3d-4251-bce8-cdd1932fae28
+ref table LocalDateTable_b9ce562c-15b8-4ad5-a27a-693261a0e1ea
+ref table LocalDateTable_0fc842a0-3608-499d-aa1c-1f4c6c389c50
+ref table DATA
+ref table 'public history_snapshots'
+ref table 'public market_state'
+ref table 'public shocks'
+
+ref cultureInfo en-US
+

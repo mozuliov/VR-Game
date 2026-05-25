@@ -1,0 +1,53 @@
+table 'public market_state'
+	lineageTag: cdbed8c8-fe3e-464c-8c1f-b61a73c383ce
+
+	column id
+		dataType: int64
+		formatString: 0
+		lineageTag: 0ed10eea-66aa-48ea-a728-994d90129c1a
+		summarizeBy: sum
+		sourceColumn: id
+
+		annotation SummarizationSetBy = Automatic
+
+	column current_quarter
+		dataType: int64
+		formatString: 0
+		lineageTag: bc1c7a60-294b-4d3d-92ca-1b2810bd8330
+		summarizeBy: sum
+		sourceColumn: current_quarter
+
+		annotation SummarizationSetBy = Automatic
+
+	column market_size
+		dataType: int64
+		formatString: 0
+		lineageTag: 28f2da80-730a-43f1-8392-08f728e6f605
+		summarizeBy: sum
+		sourceColumn: market_size
+
+		annotation SummarizationSetBy = Automatic
+
+	column growth_rate_percent
+		dataType: double
+		lineageTag: 9169d38c-999d-4890-959b-25449ecb97c2
+		summarizeBy: sum
+		sourceColumn: growth_rate_percent
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	partition 'public market_state' = m
+		mode: import
+		source =
+				let
+				  Source = PostgreSQL.Database("db.abkjmgfazfhhncseybvz.supabase.co", "postgres"),
+				  #"Navigation 1" = Source{[Schema = "public", Item = "market_state"]}[Data]
+				in
+				  #"Navigation 1"
+
+	annotation PBI_NavigationStepName = Navigation
+
+	annotation PBI_ResultType = Table
+
