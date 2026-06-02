@@ -34,8 +34,8 @@ export async function GET(request, { params }) {
 
             let allComps = stateData.companies || [];
             let totalMkt = allComps.reduce((s, x) => s + Math.max(x.brand_equity || 0, 0), 0) || 1;
-            let mktShare = (company.brand_equity || 0) / totalMkt;
-            let weighted_score = (0.4 * totalEquity + 0.4 * mktShare * 100000 + 0.2 * (company.brand_equity || 0));
+            let mktShareFrac = (company.market_share || 0) / 100;
+            let weighted_score = (0.4 * totalEquity + 0.4 * mktShareFrac * 100000 + 0.2 * (company.brand_equity || 0));
 
             history.push({
                 quarter: `Q${snap.round_id}`,

@@ -158,9 +158,8 @@ export default function GameMaster() {
     // Scoring helper
     const buildScore = (c) => {
         const eq = c.shareholders_equity + c.retained_earnings;
-        const totalMkt = companies.reduce((s, x) => s + (x.brand_equity || 0), 0) || 1;
-        const mktShare = (c.brand_equity || 0) / totalMkt;
-        return Math.round(0.4 * eq + 0.4 * mktShare * 100000 + 0.2 * (c.brand_equity || 0));
+        const mktShareFrac = (c.market_share || 0) / 100;
+        return Math.round(0.4 * eq + 0.4 * mktShareFrac * 100000 + 0.2 * (c.brand_equity || 0));
     };
 
     const leaderboard = [...companies]

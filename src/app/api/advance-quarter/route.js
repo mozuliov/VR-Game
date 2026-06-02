@@ -16,14 +16,6 @@ export async function POST(request) {
         const { data: companies, error: compErr } = await supabase.from('companies').select('*');
         if (compErr) throw compErr;
 
-        // --- STEP 1: Save a snapshot of the current state ("Time Machine") ---
-        const { error: histErr } = await supabase.from('history_snapshots').insert([{
-            round_id: marketState.current_quarter,
-            timestamp: new Date().toISOString(),
-            state_data: { companies, market_state: marketState },
-            timeline_status: 'active'
-        }]);
-        if (histErr) throw histErr;
 
         // --- STEP 2: Update AI competitor decisions ---
         const anyPlayerTechScore11plus = companies.filter(c => !c.is_ai && calculateTechScore(c) >= 11).length > 0;
@@ -140,6 +132,15 @@ export async function POST(request) {
         // --- STEP 7: Return summary data ---
         const { data: updatedCompanies, error: updatedErr } = await supabase.from('companies').select('*');
         if (updatedErr) throw updatedErr;
+
+        // --- STEP 8: Save a snapshot of the completed quarter ---
+        const { error: histErr } = await supabase.from('history_snapshots').insert([{
+            round_id: marketState.current_quarter,
+            timestamp: new Date().toISOString(),
+            state_data: { companies: updatedCompanies, market_state: marketState },
+            timeline_status: 'active'
+        }]);
+        if (histErr) throw histErr;
 
         return NextResponse.json({
             success: true,
