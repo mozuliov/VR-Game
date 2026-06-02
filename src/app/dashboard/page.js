@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useCallback, Fragment } from "react";
+import React, { useEffect, useState, useCallback, Fragment, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
     LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
@@ -50,7 +50,13 @@ export default function Dashboard() {
     const [submitMsg, setSubmitMsg] = useState("");
     const [expandedRow, setExpandedRow] = useState(null);
     const [expandedHistory, setExpandedHistory] = useState(null);
-    const [selectedQuarter, setSelectedQuarter] = useState("current");
+    const [selectedQuarter, setSelectedQuarter] = useState("");
+
+    useEffect(() => {
+        if (companyHistory.length > 0 && !selectedQuarter) {
+            setSelectedQuarter(companyHistory[companyHistory.length - 1].round_id.toString());
+        }
+    }, [companyHistory, selectedQuarter]);
 
     const handleExpand = async (id) => {
         if (expandedRow === id) {
@@ -78,6 +84,101 @@ export default function Dashboard() {
     const [upgradeOptics, setUpgradeOptics] = useState(false);
     const [upgradeTracking, setUpgradeTracking] = useState(false);
     const [upgradeProcessor, setUpgradeProcessor] = useState(false);
+
+    const scrollRef = useRef(null);
+    const videoRef = useRef(null);
+    const telemetryRef = useRef(null);
+
+    // High-performance smooth animation lerp loop for VR Set video
+    useEffect(() => {
+        const vid = videoRef.current;
+        const container = scrollRef.current;
+        if (!vid || !container) return;
+
+        let targetTime = 0;
+        let animFrame = null;
+
+        // Force browser to load video data so duration is available
+        vid.load();
+
+        const handleScroll = () => {
+            const maxScroll = container.scrollHeight - container.clientHeight;
+            if (maxScroll <= 0) return;
+            const pct = container.scrollTop / maxScroll;
+            if (vid.duration) {
+                targetTime = pct * vid.duration;
+            }
+        };
+
+        const updateVideo = () => {
+            if (vid && vid.duration) {
+                // Smooth interpolation to targetTime
+                const diff = targetTime - vid.currentTime;
+                if (Math.abs(diff) > 0.005) {
+                    vid.currentTime += diff * 0.06;
+                }
+                
+                // Update HUD direct text value
+                if (telemetryRef.current) {
+                    const pctVal = Math.round((vid.currentTime / vid.duration) * 100);
+                    const degVal = Math.round((vid.currentTime / vid.duration) * 360);
+                    telemetryRef.current.textContent = `ROTATION: ${degVal}° | DEPTH: ${pctVal}%`;
+                }
+            }
+            animFrame = requestAnimationFrame(updateVideo);
+        };
+
+        container.addEventListener("scroll", handleScroll);
+        animFrame = requestAnimationFrame(updateVideo);
+
+        // Also run once to align initial state
+        const timer = setTimeout(handleScroll, 500);
+
+        return () => {
+            container.removeEventListener("scroll", handleScroll);
+            cancelAnimationFrame(animFrame);
+            clearTimeout(timer);
+        };
+    }, [data, tab]);
+
+    // Helper to resolve HUD specs dynamically
+    const getHUDSpec = (key, currentLvl, isUpgraded) => {
+        const specs = {
+            display: {
+                1: "LCD, 2K Res",
+                2: "OLED, 3.5K Res",
+                3: "Micro-OLED, 5K Res"
+            },
+            optics: {
+                1: "Fresnel Lenses",
+                2: "Aspheric Lenses",
+                3: "Pancake Lenses"
+            },
+            tracking: {
+                1: "3-DoF Tracking",
+                2: "6-DoF Inside-Out",
+                3: "6-DoF + Eye Track"
+            },
+            processor: {
+                1: "Mobile Lite SoC",
+                2: "Standard SoC",
+                3: "High-Perf XR"
+            }
+        };
+
+        const currentSpec = specs[key][currentLvl] || "Unknown";
+        if (isUpgraded && currentLvl < 3) {
+            const nextSpec = specs[key][currentLvl + 1];
+            return {
+                text: `${currentSpec} ➔ ${nextSpec}`,
+                pending: true
+            };
+        }
+        return {
+            text: currentSpec,
+            pending: false
+        };
+    };
 
     const fetchAll = useCallback(async (id) => {
         const [compRes, mktRes, allRes, histRes] = await Promise.all([
@@ -167,9 +268,8 @@ export default function Dashboard() {
     // Build leaderboard with weighted score
     const buildScore = (c) => {
         const totalA = c.shareholders_equity + c.retained_earnings;
-        const totalMkt = allCompanies.reduce((s, x) => s + Math.max(x.brand_equity || 0, 0), 0) || 1;
-        const mktShare = (c.brand_equity || 0) / totalMkt;
-        return (0.4 * totalA + 0.4 * mktShare * 100000 + 0.2 * (c.brand_equity || 0)).toFixed(0);
+        const mktShareFrac = (c.market_share || 0) / 100;
+        return (0.4 * totalA + 0.4 * mktShareFrac * 100000 + 0.2 * (c.brand_equity || 0)).toFixed(0);
     };
 
     const leaderboard = [...allCompanies]
@@ -177,6 +277,11 @@ export default function Dashboard() {
         .map((c, i) => ({ ...c, rank: i + 1, score: buildScore(c) }));
 
     // companyHistory is fetched live from /api/history/company/[id]
+    const lastHistoryItem = companyHistory.length > 0 ? companyHistory[companyHistory.length - 1] : null;
+    const displayCash = lastHistoryItem ? lastHistoryItem.cash : data.cash;
+    const displayTotalEquity = lastHistoryItem ? lastHistoryItem.total_equity : totalEquity;
+    const displayBrandEquity = lastHistoryItem ? lastHistoryItem.brand_equity : data.brand_equity;
+    const displayTechScore = lastHistoryItem ? lastHistoryItem.tech_score : techScore;
 
     return (
         <div className="min-h-screen text-gray-100 relative">
@@ -230,10 +335,10 @@ export default function Dashboard() {
 
                 {/* ─── KPI Strip ─── */}
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
-                    <StatCard title="Cash" value={fmt(data.cash)} color="text-green-400" />
-                    <StatCard title="Total Equity" value={fmt(totalEquity)} color={totalEquity >= 500000 ? "text-green-400" : "text-red-400"} />
-                    <StatCard title="Brand Equity" value={`${data.brand_equity} pts`} color="text-fuchsia-400" />
-                    <StatCard title="Tech Score" value={`${techScore} / 12`} color="text-yellow-400" />
+                    <StatCard title="Cash" value={fmt(displayCash)} color="text-green-400" />
+                    <StatCard title="Total Equity" value={fmt(displayTotalEquity)} color={displayTotalEquity >= 500000 ? "text-green-400" : "text-red-400"} />
+                    <StatCard title="Brand Equity" value={`${displayBrandEquity} pts`} color="text-fuchsia-400" />
+                    <StatCard title="Tech Score" value={`${displayTechScore} / 12`} color="text-yellow-400" />
                     <StatCard title="Max Capacity" value={`${maxCap.toLocaleString()} units`} sub={`Net Fixed: ${fmt(netFixed)}`} />
                 </div>
 
@@ -347,36 +452,201 @@ export default function Dashboard() {
                         </form>
 
                         {/* R&D Upgrades Panel */}
-                        <div className="glass-panel p-6 flex flex-col gap-5">
-                            <SectionHeader title="⚗️ R&D — Component Upgrades" color="text-yellow-400" />
-                            <p className="text-xs text-gray-500 font-mono">Each upgrade costs $150,000 (one-time). Effect applies next quarter (Lag Rule). Cannot skip levels.</p>
+                        <div className="glass-panel p-6 flex flex-col gap-5 relative overflow-hidden">
+                            <style dangerouslySetInnerHTML={{__html: `
+                                @keyframes scan {
+                                    0% { transform: translateY(-100%); }
+                                    100% { transform: translateY(220px); }
+                                }
+                                .custom-scrollbar::-webkit-scrollbar {
+                                    width: 6px;
+                                }
+                                .custom-scrollbar::-webkit-scrollbar-track {
+                                    background: rgba(255, 255, 255, 0.02);
+                                    border-radius: 99px;
+                                }
+                                .custom-scrollbar::-webkit-scrollbar-thumb {
+                                    background: rgba(234, 179, 8, 0.25);
+                                    border-radius: 99px;
+                                    border: 1px solid rgba(234, 179, 8, 0.1);
+                                }
+                                .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+                                    background: rgba(234, 179, 8, 0.45);
+                                }
+                            `}} />
 
-                            {[
-                                { key: "display", label: "Display", level: data.comp_display_level, set: setUpgradeDisplay, val: upgradeDisplay },
-                                { key: "optics", label: "Optics", level: data.comp_optics_level, set: setUpgradeOptics, val: upgradeOptics },
-                                { key: "tracking", label: "Tracking", level: data.comp_tracking_level, set: setUpgradeTracking, val: upgradeTracking },
-                                { key: "processor", label: "Processor", level: data.comp_processor_level, set: setUpgradeProcessor, val: upgradeProcessor },
-                            ].map(({ key, label, level, set, val }) => {
-                                const cur = COMPONENT_COSTS[key][level];
-                                const next = level < 3 ? COMPONENT_COSTS[key][level + 1] : null;
-                                return (
-                                    <div key={key} className="bg-black/30 border border-white/10 rounded-xl p-4">
-                                        <div className="flex justify-between items-start">
-                                            <div>
-                                                <p className="text-sm font-bold text-white">{label}</p>
-                                                <p className="text-xs text-gray-500 font-mono">Lvl {level}: {cur.name} — ${cur.cost}/unit</p>
-                                                {next ? <p className="text-xs text-yellow-400 font-mono mt-1">→ Lvl {level + 1}: {next.name} — ${next.cost}/unit (+$150k)</p> : <p className="text-xs text-fuchsia-400 font-mono mt-1">✓ MAX LEVEL</p>}
-                                            </div>
-                                            {next && !data.is_frozen && (
-                                                <label className={`flex items-center gap-2 cursor-pointer px-3 py-2 rounded border transition ${val ? "border-yellow-400 bg-yellow-500/10 text-yellow-300" : "border-gray-700 text-gray-500"}`}>
-                                                    <input type="checkbox" checked={val} onChange={e => set(e.target.checked)} className="accent-yellow-400" />
-                                                    <span className="text-xs font-mono">Upgrade</span>
-                                                </label>
-                                            )}
-                                        </div>
+                            <SectionHeader title="⚗️ R&D — Component Upgrades" color="text-yellow-400" />
+                            
+                            {/* ─── FUTURISTIC VR ASSEMBLY BAY VISUALIZER ─── */}
+                            <div className="relative w-full h-[220px] rounded-xl overflow-hidden border border-yellow-500/20 bg-black shadow-[0_0_20px_rgba(234,179,8,0.05),inset_0_0_20px_rgba(234,179,8,0.15)] group">
+                                <video
+                                    ref={videoRef}
+                                    src="/video/VR Set Luxury 720p.mp4"
+                                    className="w-full h-full object-cover opacity-85"
+                                    muted
+                                    playsInline
+                                    preload="auto"
+                                    loop
+                                />
+                                
+                                {/* Sci-Fi HUD Scanline */}
+                                <div className="absolute top-0 left-0 w-full h-10 bg-gradient-to-b from-transparent via-yellow-500/10 to-transparent pointer-events-none opacity-50" style={{ animation: "scan 4s linear infinite" }} />
+                                
+                                {/* Cyber Grid Background */}
+                                <div className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(0,0,0,0)_96%,rgba(234,179,8,0.03)_96%),linear-gradient(to_right,rgba(0,0,0,0)_96%,rgba(234,179,8,0.03)_96%)] bg-[size:16px_16px] pointer-events-none opacity-50" />
+
+                                {/* Interactive corner bracket overlays */}
+                                <div className="absolute top-3 left-3 w-4 h-4 border-t-2 border-l-2 border-yellow-500/40" />
+                                <div className="absolute top-3 right-3 w-4 h-4 border-t-2 border-r-2 border-yellow-500/40" />
+                                <div className="absolute bottom-3 left-3 w-4 h-4 border-b-2 border-l-2 border-yellow-500/40" />
+                                <div className="absolute bottom-3 right-3 w-4 h-4 border-b-2 border-r-2 border-yellow-500/40" />
+
+                                {/* HUD Panel: Top Stats */}
+                                <div className="absolute top-3 left-3 right-3 flex justify-between items-center text-[10px] font-mono tracking-widest text-yellow-500/80 pointer-events-none">
+                                    <div className="flex items-center gap-1.5 bg-black/75 px-2 py-0.5 rounded border border-yellow-500/20 backdrop-blur-sm">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                                        <span>ASSEMBLY BAY: ACTIVE</span>
                                     </div>
-                                );
-                            })}
+                                    <div ref={telemetryRef} className="bg-black/75 px-2 py-0.5 rounded border border-yellow-500/20 backdrop-blur-sm text-right">
+                                        ROTATION: 0° | DEPTH: 0%
+                                    </div>
+                                </div>
+
+                                {/* HUD Panel: Core Specs Overlay (translucent card) */}
+                                <div className="absolute bottom-3 left-3 right-3 bg-black/80 border border-yellow-500/20 rounded-lg p-3 backdrop-blur-md pointer-events-none">
+                                    <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[10px] font-mono">
+                                        {/* Display */}
+                                        {(() => {
+                                            const spec = getHUDSpec("display", data.comp_display_level, upgradeDisplay);
+                                            return (
+                                                <div className="flex justify-between items-center py-0.5 border-b border-white/5">
+                                                    <span className="text-gray-500 uppercase">Display:</span>
+                                                    <span className={spec.pending ? "text-yellow-400 animate-pulse font-bold" : "text-white"}>{spec.text}</span>
+                                                </div>
+                                            );
+                                        })()}
+                                        
+                                        {/* Optics */}
+                                        {(() => {
+                                            const spec = getHUDSpec("optics", data.comp_optics_level, upgradeOptics);
+                                            return (
+                                                <div className="flex justify-between items-center py-0.5 border-b border-white/5">
+                                                    <span className="text-gray-500 uppercase">Optics:</span>
+                                                    <span className={spec.pending ? "text-yellow-400 animate-pulse font-bold" : "text-white"}>{spec.text}</span>
+                                                </div>
+                                            );
+                                        })()}
+
+                                        {/* Tracking */}
+                                        {(() => {
+                                            const spec = getHUDSpec("tracking", data.comp_tracking_level, upgradeTracking);
+                                            return (
+                                                <div className="flex justify-between items-center py-0.5 border-b border-white/5">
+                                                    <span className="text-gray-500 uppercase">Tracking:</span>
+                                                    <span className={spec.pending ? "text-yellow-400 animate-pulse font-bold" : "text-white"}>{spec.text}</span>
+                                                </div>
+                                            );
+                                        })()}
+
+                                        {/* Processor */}
+                                        {(() => {
+                                            const spec = getHUDSpec("processor", data.comp_processor_level, upgradeProcessor);
+                                            return (
+                                                <div className="flex justify-between items-center py-0.5 border-b border-white/5">
+                                                    <span className="text-gray-500 uppercase">Processor:</span>
+                                                    <span className={spec.pending ? "text-yellow-400 animate-pulse font-bold" : "text-white"}>{spec.text}</span>
+                                                </div>
+                                            );
+                                        })()}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <p className="text-[11px] text-gray-500 font-mono italic leading-relaxed border-l-2 border-yellow-500/20 pl-2">
+                                💡 Tip: Scroll the upgrade list below to rotate the VR Set and preview full 3D-like mechanics.
+                            </p>
+
+                            {/* ─── SNAP-SCROLL CAROUSEL (info only, drives VR video) ─── */}
+                            <div
+                                ref={scrollRef}
+                                className="flex flex-col overflow-y-auto h-[180px] snap-y snap-mandatory scroll-smooth pr-2 custom-scrollbar"
+                            >
+                                {[
+                                    { key: "tracking", label: "Tracking Upgrade", level: data.comp_tracking_level, val: upgradeTracking },
+                                    { key: "optics",   label: "Optics Upgrade",   level: data.comp_optics_level,   val: upgradeOptics },
+                                    { key: "processor",label: "Processor Upgrade",level: data.comp_processor_level,val: upgradeProcessor },
+                                    { key: "display",  label: "Display Upgrade",  level: data.comp_display_level,  val: upgradeDisplay },
+                                ].map(({ key, label, level, val }) => {
+                                    const cur  = COMPONENT_COSTS[key][level];
+                                    const next = level < 3 ? COMPONENT_COSTS[key][level + 1] : null;
+                                    const desc = {
+                                        tracking:  "🎯 Spatial Telemetry: Decodes player head and controller movement. Advanced tracking drastically lowers spatial lag, cuts simulator motion sickness, and unlocks natural, high-precision hand interactions.",
+                                        optics:    "👓 Visual Path: Focuses screen pixels perfectly onto the pupil. Premium lenses expand the FOV Sweet Spot, clear chromatic blur, and reduce physical visor depth and headset weight.",
+                                        processor: "🧠 Computation Engine: Runs sensor-fusion, physics, and graphics rendering. Heavy-duty processors maintain solid 90+ FPS, support high-density audio, and prevent screen tearing.",
+                                        display:   "📺 Screen Resolution: Visual output interface. Higher pixel density removes the screen-door texture, rendering vivid contrast, deep blacks, and sharp text legibility.",
+                                    };
+                                    return (
+                                        <div key={key} className="h-[300px] py-1 flex-shrink-0 w-full snap-center snap-always flex flex-col justify-center">
+                                            <div className={`bg-black/45 border rounded-xl p-4 h-[165px] flex flex-col justify-between transition-all duration-300 ${val ? "border-yellow-500/40 bg-yellow-500/5 shadow-[0_0_15px_rgba(234,179,8,0.05)]" : "border-white/10"}`}>
+                                                <div>
+                                                    <div className="flex items-center gap-2 mb-1">
+                                                        <p className="text-xs font-bold text-white uppercase tracking-wider">{label}</p>
+                                                        {val  && <span className="bg-yellow-500/20 text-yellow-300 text-[8px] px-1.5 py-0.5 rounded font-mono uppercase tracking-widest border border-yellow-500/10 animate-pulse">Pending Lock-in</span>}
+                                                        {!next && <span className="bg-green-900/30 text-green-400 text-[8px] px-1.5 py-0.5 rounded font-mono uppercase border border-green-500/20">Max Level</span>}
+                                                    </div>
+                                                    <p className="text-[10px] text-gray-400 font-mono leading-relaxed">{desc[key]}</p>
+                                                </div>
+                                                <div className="flex gap-4 text-[10px] font-mono border-t border-white/5 pt-2">
+                                                    <span className="text-gray-500">CURRENT: <span className="text-white">Lvl {level} ({cur.name}) · ${cur.cost}/unit</span></span>
+                                                    {next && <span className="text-yellow-500">UPGRADE ➔: <span className="text-yellow-400">Lvl {level + 1} ({next.name}) · ${next.cost}/unit</span></span>}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+
+                            {/* ─── PERSISTENT UPGRADE BUTTON GRID (always visible) ─── */}
+                            <div className="grid grid-cols-2 gap-2">
+                                {[
+                                    { key: "tracking",  label: "Tracking",  icon: "🎯", level: data.comp_tracking_level,  set: setUpgradeTracking,  val: upgradeTracking },
+                                    { key: "optics",    label: "Optics",    icon: "👓", level: data.comp_optics_level,    set: setUpgradeOptics,    val: upgradeOptics },
+                                    { key: "processor", label: "Processor", icon: "🧠", level: data.comp_processor_level, set: setUpgradeProcessor, val: upgradeProcessor },
+                                    { key: "display",   label: "Display",   icon: "📺", level: data.comp_display_level,   set: setUpgradeDisplay,   val: upgradeDisplay },
+                                ].map(({ key, label, icon, level, set, val }) => {
+                                    const next = level < 3 ? COMPONENT_COSTS[key][level + 1] : null;
+                                    const isMaxed  = !next;
+                                    const isFrozen = !!data.is_frozen;
+                                    return (
+                                        <button
+                                            key={key}
+                                            type="button"
+                                            disabled={isMaxed || isFrozen}
+                                            onClick={() => !isMaxed && !isFrozen && set(!val)}
+                                            className={`relative flex flex-col items-start gap-0.5 px-3 py-2.5 rounded-xl border text-left transition-all duration-200
+                                                ${isMaxed  ? "border-green-800/30 bg-green-900/10 cursor-default opacity-70" : ""}
+                                                ${isFrozen && !isMaxed ? "border-red-900/30 bg-red-900/10 cursor-not-allowed opacity-50" : ""}
+                                                ${!isMaxed && !isFrozen && val  ? "border-yellow-400 bg-yellow-500/15 shadow-[0_0_14px_rgba(234,179,8,0.25)]" : ""}
+                                                ${!isMaxed && !isFrozen && !val ? "border-white/10 bg-black/30 hover:border-yellow-600/60 hover:bg-yellow-500/5" : ""}
+                                            `}
+                                        >
+                                            <div className="flex items-center gap-1.5 w-full">
+                                                <span className="text-sm leading-none">{icon}</span>
+                                                <span className={`text-[11px] font-bold font-mono uppercase tracking-wider ${val && !isMaxed ? "text-yellow-300" : "text-gray-300"}`}>{label}</span>
+                                                {val && !isMaxed && (
+                                                    <span className="ml-auto text-[8px] bg-yellow-500/20 text-yellow-400 border border-yellow-500/20 px-1 py-0.5 rounded font-mono uppercase animate-pulse">ON</span>
+                                                )}
+                                                {isMaxed && (
+                                                    <span className="ml-auto text-[8px] bg-green-900/30 text-green-500 border border-green-700/30 px-1 py-0.5 rounded font-mono uppercase">MAX</span>
+                                                )}
+                                            </div>
+                                            <span className="text-[9px] font-mono text-gray-600 pl-5">
+                                                {isMaxed  ? `Lvl ${level} — fully upgraded` : isFrozen ? "frozen" : val ? `Lvl ${level} ➔ ${level + 1} queued` : `Lvl ${level} → click to queue`}
+                                            </span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
 
                             {/* Component Summary */}
                             <div className="bg-black/30 border border-yellow-500/20 rounded-xl p-4 mt-2">
@@ -390,9 +660,7 @@ export default function Dashboard() {
 
                 {/* ─── FINANCIALS TAB ─── */}
                 {tab === "financials" && (() => {
-                    const displayData = selectedQuarter === "current" 
-                        ? data 
-                        : (companyHistory.find(h => h.round_id.toString() === selectedQuarter)?.raw_company || data);
+                    const displayData = companyHistory.find(h => h.round_id.toString() === selectedQuarter)?.raw_company || data;
 
                     const getDispUnitCost = (comp) => {
                         return ASSEMBLY_COST + 
@@ -401,7 +669,7 @@ export default function Dashboard() {
                             (COMPONENT_COSTS.tracking[comp.comp_tracking_level || 1]?.cost || 30) + 
                             (COMPONENT_COSTS.processor[comp.comp_processor_level || 1]?.cost || 50);
                     };
-                    const dispUnitCost = selectedQuarter === "current" ? unitCost : getDispUnitCost(displayData);
+                    const dispUnitCost = getDispUnitCost(displayData);
 
                     const displayNetFixed = (displayData.fixed_assets_gross || 0) - (displayData.accumulated_depreciation || 0);
                     const displayTotalAssets = (displayData.cash || 0) + (displayData.accounts_receivable || 0) + ((displayData.inventory_units || 0) * dispUnitCost) + displayNetFixed;
@@ -413,7 +681,14 @@ export default function Dashboard() {
                         <div className="flex flex-col gap-6">
                             {/* Quarter Selector */}
                             <div className="glass-panel p-4 flex items-center justify-between">
-                                <span className="text-cyan-400 font-bold tracking-wider">Financial Statements {selectedQuarter === "current" ? `(Current Q${market?.current_quarter || "—"})` : `(Q${selectedQuarter})`}</span>
+                                <div className="flex flex-col gap-0.5">
+                                    <span className="text-cyan-400 font-bold tracking-wider">
+                                        Financial Statements — Q{selectedQuarter}
+                                    </span>
+                                    <span className="text-xs font-mono text-gray-500">
+                                        Statements as of end of Q{selectedQuarter}.
+                                    </span>
+                                </div>
                                 <div className="flex items-center gap-3">
                                     <label className="text-sm font-mono text-gray-400 uppercase">Select Period:</label>
                                     <select 
@@ -421,7 +696,6 @@ export default function Dashboard() {
                                         onChange={(e) => setSelectedQuarter(e.target.value)}
                                         className="bg-black/50 border border-cyan-900 rounded px-3 py-1 text-white font-mono text-sm focus:outline-none focus:border-cyan-400 pb-1"
                                     >
-                                        <option value="current">Current (Q{market?.current_quarter || "—"})</option>
                                         {[...companyHistory].reverse().map(h => (
                                             <option key={h.round_id} value={h.round_id.toString()}>Q{h.round_id}</option>
                                         ))}
@@ -526,11 +800,11 @@ export default function Dashboard() {
                                 {/* Quarter quick stats */}
                                 <div className="md:col-span-3 grid grid-cols-2 gap-4 mt-2">
                                     <div className="bg-black/30 border border-white/10 rounded-xl p-4">
-                                        <p className="text-xs text-gray-500 uppercase mb-2 font-mono">Inventory Units {selectedQuarter !== "current" && `(Q${selectedQuarter})`}</p>
+                                        <p className="text-xs text-gray-500 uppercase mb-2 font-mono">Inventory Units (Q{selectedQuarter})</p>
                                         <p className="text-2xl font-mono text-white">{displayData.inventory_units.toLocaleString()} <span className="text-sm text-gray-600">units</span></p>
                                     </div>
                                     <div className="bg-black/30 border border-white/10 rounded-xl p-4">
-                                        <p className="text-xs text-gray-500 uppercase mb-2 font-mono">Debt (Credit / Loan) {selectedQuarter !== "current" && `(Q${selectedQuarter})`}</p>
+                                        <p className="text-xs text-gray-500 uppercase mb-2 font-mono">Debt (Credit / Loan) (Q{selectedQuarter})</p>
                                         <p className="text-2xl font-mono text-red-400">{fmt(displayData.credit_line)} <span className="text-sm text-gray-600">/ {fmt(displayData.bank_loan)}</span></p>
                                     </div>
                                 </div>
@@ -605,13 +879,12 @@ export default function Dashboard() {
                                     <th className="text-left py-2">Company</th>
                                     <th className="text-right py-2">Total Equity</th>
                                     <th className="text-right py-2">Brand Equity</th>
-                                    <th className="text-right py-2">Tech Score</th>
+                                    <th className="text-right py-2">Market Share</th>
                                     <th className="text-right py-2 pr-2">Weighted Score</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {leaderboard.map((c, i) => {
-                                    const ts = c.comp_display_level + c.comp_optics_level + c.comp_tracking_level + c.comp_processor_level;
                                     const eq = c.shareholders_equity + c.retained_earnings;
                                     const isMe = c.company_id === companyId;
                                     return (
@@ -632,7 +905,7 @@ export default function Dashboard() {
                                                 </td>
                                                 <td className={`py-3 text-right ${eq >= 0 ? "text-green-400" : "text-red-400"}`}>{fmt(eq)}</td>
                                                 <td className="py-3 text-right text-fuchsia-400">{c.brand_equity} pts</td>
-                                                <td className="py-3 text-right text-yellow-400">{ts} / 12</td>
+                                                <td className="py-3 text-right text-green-400">{Number(c.market_share || 0).toFixed(2)}%</td>
                                                 <td className="py-3 text-right pr-2 text-white font-bold">{parseInt(c.score).toLocaleString()}</td>
                                             </tr>
                                             {expandedRow === c.company_id && (
